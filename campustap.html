@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CampusTap Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <style>
+    .ride-history-container { max-height: 250px; overflow-y: auto; margin-top: 15px; border: 1px solid #ddd; border-radius: 8px; }
+    .ride-history-container th { position: sticky; top: 0; background: #006400; color: white; padding: 8px; }
+    .ride-history-container td { padding: 8px; }
+    .ride-history-container tr:nth-child(even) td { background: #f2f2f2; }
+    .ride-history-container tr:nth-child(odd) td { background: #ffffff; }
+  </style>
+</head>
+<body class="bg-green-700 text-gray-800 flex flex-col min-h-screen">
+  <nav class="bg-white shadow p-4 flex justify-between items-center">
+    <h1 class="text-xl font-bold text-green-700">🚍 CampusTap</h1>
+    <div class="space-x-4">
+      <a href="campustap.html" class="text-green-700 font-medium">Map & History</a>
+      <a href="about.html" class="text-green-700 font-medium">About Us</a>
+      <a id="adminTab" href="admin.html" class="text-green-700 font-medium hidden">Admin Dashboard</a>
+      <button onclick="logout()" class="bg-red-600 text-white px-3 py-1 rounded">Logout</button>
+    </div>
+  </nav>
+
+  <main class="flex-grow p-6 space-y-10 max-w-5xl mx-auto">
+    <section id="map" class="bg-white rounded-lg shadow p-4">
+      <h2 class="text-lg font-semibold text-green-700 mb-3">📍 Shuttle Route & History</h2>
+      <div id="mapid" class="h-64 w-full rounded"></div>
+      <h3 class="mt-4 font-semibold text-green-600">Ride History (₱10 fare)</h3>
+      <div class="ride-history-container">
+        <table class="w-full border-collapse">
+          <thead><tr><th>Date</th><th>Route</th><th>Fare</th></tr></thead>
+          <tbody id="rideTable"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const sampleRides = [
+      { date: "2025-09-01", route: "USC Talamban Loop", fare: 10 },
+      { date: "2025-08-30", route: "USC Talamban Loop", fare: 10 },
+      { date: "2025-08-28", route: "USC Talamban Loop", fare: 10 },
+      { date: "2025-08-25", route: "USC Talamban Loop", fare: 10 }
+    ];
+    if (!localStorage.getItem("rideHistory")) {
+      localStorage.setItem("rideHistory", JSON.stringify(sampleRides));
+    }
+    const rides = JSON.parse(localStorage.getItem("rideHistory")) || [];
+    const rideTable = document.getElementById("rideTable");
+    rides.forEach(ride => { rideTable.innerHTML += `<tr><td>${ride.date}</td><td>${ride.route}</td><td>₱${ride.fare}</td></tr>`; });
+
+    const map = L.map('mapid').setView([10.3541, 123.9114], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    L.marker([10.3541, 123.9114]).addTo(map).bindPopup("USC Talamban Campus");
+
+    function logout() { window.location.href = "index.html"; }
+  </script>
+</body>
+</html>

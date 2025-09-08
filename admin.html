@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Dashboard - CampusTap</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-green-700 text-gray-800 min-h-screen">
+  <nav class="bg-white shadow p-4 flex justify-between items-center">
+    <h1 class="text-xl font-bold text-green-700">📊 Admin Dashboard</h1>
+    <a href="campustap.html" class="text-green-700 font-medium">Back</a>
+  </nav>
+
+  <main class="max-w-5xl mx-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="bg-white rounded-lg shadow p-4"><h2>Total Rides</h2><canvas id="ridesChart"></canvas></div>
+    <div class="bg-white rounded-lg shadow p-4"><h2>Total Revenue</h2><canvas id="revenueChart"></canvas></div>
+    <div class="bg-white rounded-lg shadow p-4"><h2>Active Shuttles</h2><canvas id="shuttleChart"></canvas></div>
+  </main>
+
+  <script>
+    const rideHistory = JSON.parse(localStorage.getItem("rideHistory")) || [];
+    const totalRides = rideHistory.length;
+    const totalRevenue = rideHistory.reduce((sum, ride) => sum + ride.fare, 0);
+    const activeShuttles = Math.min(3, (totalRides % 5) + 1);
+
+    const ridesByDate = {};
+    rideHistory.forEach(ride => { ridesByDate[ride.date] = (ridesByDate[ride.date] || 0) + 1; });
+    const labels = Object.keys(ridesByDate);
+    const rideCounts = Object.values(ridesByDate);
+
+    new Chart(document.getElementById('ridesChart'), { type: 'bar', data: { labels, datasets: [{ data: rideCounts }] } });
+    new Chart(document.getElementById('revenueChart'), { type: 'doughnut', data: { labels: ['Revenue'], datasets: [{ data: [totalRevenue] }] } });
+    new Chart(document.getElementById('shuttleChart'), { type: 'pie', data: { labels: ['Active','Inactive'], datasets: [{ data: [activeShuttles, 3-activeShuttles] }] } });
+  </script>
+</body>
+</html>
