@@ -1,43 +1,169 @@
-<!-- GOOGLE MAP SECTION -->
-<div id="map" style="width: 100%; height: 350px; border-radius: 10px; margin-top: 20px;"></div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CampusTap — Map & Ride History</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.tailwindcss.com"></script>
 
-<script>
-  let map;
-  let marker;
+  <style>
+    /* limit map size */
+    #map {
+      width: 100%;
+      height: 320px;
+      border-radius: 10px;
+    }
 
-  // Initialize Google Map
-  function initMap() {
-    map = new google.maps.Map(document.getElementById("map"), {
-      zoom: 16,
-      center: { lat: 10.3157, lng: 123.8854 }, // default: Cebu
+    /* ride history table styling */
+    .ride-box {
+      max-width: 600px;
+      margin: 20px auto;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .ride-history-table {
+      max-height: 220px;
+      overflow-y: auto;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+    }
+
+    .ride-history-table table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .ride-history-table th {
+      background: #0f6938;
+      color: white;
+      padding: 8px;
+      position: sticky;
+      top: 0;
+    }
+
+    .ride-history-table td {
+      padding: 8px;
+      border-bottom: 1px solid #eee;
+    }
+
+    /* map container */
+    .map-box {
+      max-width: 900px;
+      margin: 20px auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+
+<body class="bg-green-700 min-h-screen">
+  
+  <!-- NAVBAR -->
+  <nav class="bg-white shadow p-4 flex justify-between items-center">
+    <h1 class="text-xl font-bold text-green-700">🚍 CampusTap</h1>
+    <div class="space-x-4">
+      <a href="campustap.html" class="text-green-700 font-semibold">Map & History</a>
+      <a href="about.html" class="text-green-700 font-semibold">About</a>
+      <a href="account.html" class="text-green-700 font-semibold">Account</a>
+      <a href="admin.html" id="adminTab" class="text-green-700 font-semibold hidden">Admin</a>
+      <button onclick="logout()" class="bg-red-600 text-white px-3 py-1 rounded">Logout</button>
+    </div>
+  </nav>
+
+  <!-- MAP BOX -->
+  <div class="map-box">
+    <h2 class="text-green-700 text-xl font-bold mb-2">📍 Bus Live Location</h2>
+    <div id="map"></div>
+  </div>
+
+  <!-- RIDE HISTORY BOX -->
+  <div class="ride-box">
+    <h2 class="text-green-700 text-xl font-bold mb-2">🧾 Ride History (₱10)</h2>
+
+    <div class="ride-history-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Route</th>
+            <th>Fare</th>
+          </tr>
+        </thead>
+        <tbody id="rideHistoryBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- FIREBASE -->
+  <script type="module">
+    import { auth, db } from "./firebase-config.js";
+    import { collection, doc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+
+    let currentUser = null;
+
+    // Show admin tab
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) return location.href = "index.html";
+
+      currentUser = user;
+      const snap = await getDoc(doc(db, "users", user.uid));
+
+      if (snap.exists()) {
+        if (snap.data().role === "admin") {
+          document.getElementById("adminTab").classList.remove("hidden");
+        }
+      }
+
+      loadRideHistory();
     });
 
-    marker = new google.maps.Marker({
-      map: map,
-      title: "Student Location",
-    });
+    function logout() {
+      signOut(auth);
+    }
 
-    trackLiveLocation(); // start live tracking
-  }
+    /* Load Ride History */
+    function loadRideHistory() {
+      const tbody = document.getElementById("rideHistoryBody");
+      tbody.innerHTML = "";
 
-  // 🔥 LIVE TRACKING USING FIRESTORE
-  function trackLiveLocation() {
-    const user = firebase.auth().currentUser;
-    if (!user) return console.log("No user logged in.");
+      let rides = JSON.parse(localStorage.getItem(currentUser.uid + "_rides")) || [];
 
-    const docRef = db.collection("locations").doc(user.uid);
+      rides.forEach(r => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${r.date}</td>
+            <td>${r.route}</td>
+            <td>₱${r.fare}</td>
+          </tr>
+        `;
+      });
+    }
+  </script>
 
-    docRef.onSnapshot((doc) => {
-      if (!doc.exists) return console.log("No location data yet.");
+  <!-- GOOGLE MAPS -->
+  <script>
+    let map;
+    let marker;
 
-      const data = doc.data();
-      const newPos = { lat: data.lat, lng: data.lng };
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 16,
+        center: { lat: 10.3541, lng: 123.9114 }, // USC Talamban
+      });
 
-      marker.setPosition(newPos);
-      map.setCenter(newPos);
-    });
-  }
-</script>
+      marker = new google.maps.Marker({
+        map,
+        position: { lat: 10.3541, lng: 123.9114 },
+        title: "Bus Location",
+      });
+    }
+  </script>
 
 <!-- GOOGLE MAPS API SCRIPT (PUT YOUR API KEY BELOW) -->
 <script async 
