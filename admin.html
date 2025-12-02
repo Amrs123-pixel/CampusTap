@@ -1,24 +1,23 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <title>CampusTap — Admin (Top Up + Mock Charts)</title>
+  <title>CampusTap — Admin</title>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-green-700 min-h-screen text-gray-900">
-  <nav class="bg-white p-4 flex justify-between items-center">
+  <nav class="bg-white shadow p-4 flex justify-between items-center">
     <div class="font-bold text-green-700">Admin Dashboard</div>
-    <div class="flex gap-4 items-center">
-      <a href="campustap.html" class="text-green-700">Student</a>
-      <a href="account.html" class="text-green-700">Account</a>
+    <div>
+      <a href="campustap.html" class="text-green-700 mr-4">Student</a>
+      <a href="account.html" class="text-green-700 mr-4">Account</a>
       <button id="logout" class="bg-red-600 text-white px-3 py-1 rounded">Logout</button>
     </div>
   </nav>
 
-  <main class="max-w-6xl mx-auto p-6 space-y-8">
-    <!-- Charts (mock rides from localStorage to keep your current demo) -->
+  <main class="max-w-6xl mx-auto p-6 space-y-6">
     <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div class="bg-white p-4 rounded shadow">
         <h3 class="font-semibold text-green-700">Total Rides</h3>
@@ -34,159 +33,108 @@
       </div>
     </section>
 
-    <!-- Manage Accounts (Firestore) -->
     <section class="bg-white p-4 rounded shadow">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-lg font-semibold text-green-700">Manage Accounts (Top Up Balance)</h3>
-        <input id="userSearch" type="text" placeholder="Search name/email…" class="border rounded px-3 py-2 w-64">
+      <h3 class="text-lg font-semibold text-green-700">Manage Accounts (Top Up)</h3>
+      <div class="flex gap-2 my-2">
+        <input id="searchInput" type="text" placeholder="Search name / email" class="border p-2 rounded w-96">
+        <button id="refreshBtn" class="bg-blue-600 text-white px-3 py-1 rounded">Refresh</button>
       </div>
-      <div class="overflow-x-auto">
+
+      <div class="overflow-auto">
         <table class="w-full text-sm">
           <thead class="bg-green-700 text-white sticky top-0">
-            <tr>
-              <th class="text-left p-2">Name</th>
-              <th class="text-left p-2">Email</th>
-              <th class="text-left p-2">Role</th>
-              <th class="text-left p-2">Balance</th>
-              <th class="text-left p-2">Top Up</th>
-              <th class="text-left p-2">Actions</th>
-            </tr>
+            <tr><th class="p-2 text-left">Name</th><th class="p-2 text-left">Email</th><th class="p-2 text-left">Role</th><th class="p-2 text-left">Balance</th><th class="p-2 text-left">Top Up</th></tr>
           </thead>
           <tbody id="usersTbody"></tbody>
         </table>
       </div>
-      <p class="text-xs text-gray-500 mt-2">Tip: Quick buttons add to the input amount; click “Top Up” to apply.</p>
     </section>
   </main>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import {
-      getFirestore, collection, onSnapshot, query, orderBy,
-      doc, updateDoc, increment, getDoc
-    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-    import { firebaseConfig } from "./firebase-config.js";
+    import { auth, db } from "./firebase-config.js";
+    import { signOut, getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { collection, query, orderBy, onSnapshot, doc, updateDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-    document.getElementById('logout').onclick = () => signOut(auth).then(()=> location.href='index.html');
+    const usersTbody = document.getElementById("usersTbody");
+    const searchInput = document.getElementById("searchInput");
+    const refreshBtn = document.getElementById("refreshBtn");
 
-    let isAdmin = false;
+    document.getElementById("logout").onclick = () => signOut(getAuth());
 
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) { location.href = 'index.html'; return; }
-      const meSnap = await getDoc(doc(db, "users", user.uid));
-      const me = meSnap.data() || {};
-      isAdmin = (me.role === "admin");
-      if (!isAdmin) { location.href = "campustap.html"; return; }
+    onAuthStateChanged(getAuth(), async (user) => {
+      if (!user) return location.href = "index.html";
+      // Optional: check role is admin and redirect if not
+      const meSnap = await (await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js")).getDoc((await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js")).doc(db, "users", user.uid));
+      if (!meSnap.exists() || meSnap.data().role !== "admin") return location.href = "campustap.html";
       subscribeUsers();
       drawCharts();
     });
 
-    // -------- Mock charts from localStorage --------
-    const FARE = 10;
-    function getAllRides(){
-      const keys = Object.keys(localStorage).filter(k => k.startsWith("rides:"));
-      const all = [];
-      keys.forEach(k => {
-        try { all.push(...JSON.parse(localStorage.getItem(k) || "[]")); } catch {}
-      });
-      return all;
-    }
-    function drawCharts(){
-      const rides = getAllRides();
-      const total = rides.length;
-      const revenue = total * FARE;
-      const byDate = {};
-      rides.forEach(r => {
-        const dateOnly = (r.time || "").split(",")[0];
-        byDate[dateOnly] = (byDate[dateOnly] || 0) + 1;
-      });
-      const labels = Object.keys(byDate);
-      const counts = labels.map(l => byDate[l]);
-
-      const rctx = document.getElementById('ridesChart').getContext('2d');
-      const revctx = document.getElementById('revenueChart').getContext('2d');
-      const sctx = document.getElementById('shuttleChart').getContext('2d');
-
-      new Chart(rctx, { type:'bar', data:{ labels, datasets:[{ label:'Rides per day', data:counts }] } });
-      new Chart(revctx, { type:'doughnut', data:{ labels:['Revenue'], datasets:[{ data:[revenue] }] } });
-      const activeShuttles = Math.min(3, (total % 5) + 1);
-      new Chart(sctx, { type:'pie', data:{ labels:['Active','Inactive'], datasets:[{ data:[activeShuttles, 3-activeShuttles] }] } });
-    }
-
-    // -------- Users table & Top Up (Firestore) --------
-    const usersTbody = document.getElementById('usersTbody');
-    const searchInput = document.getElementById('userSearch');
-    let allUsers = [];
-
-    function renderUsers(){
-      const q = (searchInput.value || "").toLowerCase();
+    function renderUsers(list) {
       usersTbody.innerHTML = "";
-      allUsers
-        .filter(u => (`${u.fullName||""} ${u.email||""}`.toLowerCase().includes(q)))
-        .forEach(u => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td class="p-2">${u.fullName || "—"}</td>
-            <td class="p-2">${u.email || "—"}</td>
-            <td class="p-2">${u.role || "—"}</td>
-            <td class="p-2 font-semibold">₱${(u.balance ?? 0)}</td>
-            <td class="p-2">
-              <div class="flex items-center gap-2">
-                <input type="number" step="10" min="0" class="border rounded px-2 py-1 w-24" placeholder="Amount" id="amt-${u.id}">
-                <div class="flex gap-1">
-                  <button class="px-2 py-1 bg-gray-100 border rounded" data-quick="10"  data-uid="${u.id}">+10</button>
-                  <button class="px-2 py-1 bg-gray-100 border rounded" data-quick="50"  data-uid="${u.id}">+50</button>
-                  <button class="px-2 py-1 bg-gray-100 border rounded" data-quick="100" data-uid="${u.id}">+100</button>
-                </div>
-              </div>
-            </td>
-            <td class="p-2">
-              <button class="bg-green-600 text-white px-3 py-1 rounded" data-topup="${u.id}">Top Up</button>
-            </td>
-          `;
-          usersTbody.appendChild(tr);
-        });
-
-      usersTbody.querySelectorAll("[data-quick]").forEach(btn => {
-        btn.onclick = () => {
-          const uid = btn.getAttribute("data-uid");
-          const inc = parseInt(btn.getAttribute("data-quick"), 10);
-          const input = document.getElementById(`amt-${uid}`);
-          const current = parseInt(input.value || "0", 10);
-          input.value = (current + inc);
-        };
+      list.forEach(u => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="p-2">${u.fullName||"—"}</td>
+          <td class="p-2">${u.email||"—"}</td>
+          <td class="p-2">${u.role||"—"}</td>
+          <td class="p-2 font-semibold">₱${u.balance||0}</td>
+          <td class="p-2">
+            <input id="amt-${u.id}" type="number" class="border rounded px-2 py-1 w-28" placeholder="Amount">
+            <button data-top="${u.id}" class="bg-green-600 text-white px-2 py-1 rounded ml-2">Top Up</button>
+          </td>
+        `;
+        usersTbody.appendChild(tr);
       });
 
-      usersTbody.querySelectorAll("[data-topup]").forEach(btn => {
+      usersTbody.querySelectorAll("[data-top]").forEach(btn => {
         btn.onclick = async () => {
-          const uid = btn.getAttribute("data-topup");
-          const input = document.getElementById(`amt-${uid}`);
-          const amount = parseInt(input.value || "0", 10);
-          if (!amount || amount <= 0) { alert("Enter a positive amount."); return; }
-          if (!confirm(`Top up ₱${amount}?`)) return;
+          const uid = btn.dataset.top;
+          const input = document.getElementById("amt-"+uid);
+          const amount = Number(input.value || 0);
+          if (!amount || amount <= 0) return alert("Enter a positive amount");
+          if (!confirm(`Top up ₱${amount} for this user?`)) return;
           try {
-            await updateDoc(doc(db, "users", uid), { balance: increment(amount) });
+            const userRef = doc(db, "users", uid);
+            // read current balance then update (could be transaction)
+            const snap = (await getDocs(query(collection(db, "users")))).docs.find(d=>d.id===uid);
+            const current = snap?.data()?.balance ?? 0;
+            await updateDoc(userRef, { balance: current + amount });
+            // log topup
+            await (await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js")).addDoc(collection(db, "topups"), {
+              uid, amount, by: getAuth().currentUser.uid, timestamp: Date.now()
+            });
             input.value = "";
-          } catch (e) {
-            alert("Top up failed: " + e.message);
-          }
+            alert("Top up successful");
+          } catch (e) { alert(e.message); }
         };
       });
     }
 
-    function subscribeUsers(){
-      const qUsers = query(collection(db, "users"), orderBy("fullName"));
-      onSnapshot(qUsers, (qs) => {
-        allUsers = qs.docs.map(d => ({ id: d.id, ...d.data() }));
-        renderUsers();
+    function subscribeUsers() {
+      const q = query(collection(db, "users"), orderBy("fullName"));
+      onSnapshot(q, qs => {
+        const arr = qs.docs.map(d=>({ id:d.id, ...d.data() }));
+        const filtered = arr.filter(u => (`${u.fullName} ${u.email}`).toLowerCase().includes((searchInput.value||"").toLowerCase()));
+        renderUsers(filtered);
       });
     }
 
-    searchInput.addEventListener("input", renderUsers);
+    refreshBtn.onclick = () => subscribeUsers();
+
+    // Charts (Total rides and revenue)
+    async function drawCharts() {
+      const ridesSnap = await getDocs(collection(db, "rides"));
+      const rides = ridesSnap.docs.map(d=>d.data());
+      const totalRides = rides.length;
+      const totalRevenue = rides.reduce((s,r)=> s + (r.fare || 0), 0);
+
+      new Chart(document.getElementById('ridesChart'), { type:'bar', data:{ labels:['Rides'], datasets:[{ label:'Total Rides', data:[totalRides] }] } });
+      new Chart(document.getElementById('revenueChart'), { type:'doughnut', data:{ labels:['Revenue'], datasets:[{ data:[totalRevenue] }] } });
+      const active = Math.min(3, (totalRides % 5) + 1);
+      new Chart(document.getElementById('shuttleChart'), { type:'pie', data:{ labels:['Active','Inactive'], datasets:[{ data:[active,3-active] }] } });
+    }
   </script>
 </body>
 </html>
