@@ -1,53 +1,38 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
 <head>
   <meta charset="utf-8"/>
-  <title>CampusTap — Account</title>
+  <title>Account</title>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-green-700 min-h-screen text-gray-900">
-  <nav class="bg-white p-4 flex justify-between items-center">
-    <div class="font-bold text-green-700">Account</div>
-    <div class="flex gap-4 items-center">
-      <a href="campustap.html" class="text-green-700">Student</a>
-      <a href="admin.html" class="text-green-700">Admin</a>
-      <button id="logout" class="bg-red-600 text-white px-3 py-1 rounded">Logout</button>
-    </div>
-  </nav>
+  <nav class="bg-white p-4 flex justify-between items-center"><div class="font-bold text-green-700">Account</div><div><a href="campustap.html" class="text-green-700 mr-4">Student</a><a href="admin.html" class="text-green-700 mr-4">Admin</a><button id="logout" class="bg-red-600 text-white px-3 py-1 rounded">Logout</button></div></nav>
 
   <main class="max-w-xl mx-auto p-6">
     <div class="bg-white p-4 rounded shadow">
       <div class="text-sm text-gray-600">Signed in as</div>
       <div class="mt-1 text-lg font-semibold" id="name">—</div>
       <div class="text-sm text-gray-600" id="email">—</div>
-      <div class="mt-4 flex justify-between items-center">
-        <div>Balance</div>
-        <div id="balance" class="text-xl font-bold">₱—</div>
-      </div>
+      <div class="mt-4 flex justify-between items-center"><div>Balance</div><div id="balance" class="text-xl font-bold">₱—</div></div>
     </div>
   </main>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-    import { firebaseConfig } from "./firebase-config.js";
+    import { auth, db } from "./firebase-config.js";
+    import { onAuthStateChanged, signOut, getAuth } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-    document.getElementById("logout").onclick = ()=> signOut(auth).then(()=> location.href="index.html");
+    document.getElementById("logout").onclick = ()=> signOut(getAuth());
 
-    onAuthStateChanged(auth, (user) => {
-      if (!user) { location.href = "index.html"; return; }
-      document.getElementById("email").textContent = user.email;
-      const ref = doc(db, "users", user.uid);
-      onSnapshot(ref, (snap) => {
-        const d = snap.data();
-        if (!d) return;
-        document.getElementById("name").textContent = d.fullName || "(no name)";
-        document.getElementById("balance").textContent = "₱" + (d.balance ?? 0);
+    onAuthStateChanged(getAuth(), (user) => {
+      if (!user) return location.href='index.html';
+      document.getElementById('email').textContent = user.email;
+      const ref = doc(db,'users',user.uid);
+      onSnapshot(ref, snap => {
+        const d = snap.data() || {};
+        document.getElementById('name').textContent = d.fullName || "(no name)";
+        document.getElementById('balance').textContent = "₱"+(d.balance ?? 0);
       });
     });
   </script>
