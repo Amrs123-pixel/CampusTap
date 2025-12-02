@@ -1,26 +1,88 @@
-<section class="about">
-  <h2>About CampusTap</h2>
-  <p>
-    <strong>CampusTap</strong> is a thesis project developed to modernize school transportation
-    and payment systems through the integration of RFID technology, GPS tracking, and
-    cloud-based data management. The system provides students with a convenient tap-to-ride
-    experience, automatically deducting fares from their digital balance while storing
-    ride history in a secure cloud database.
-  </p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>About — CampusTap</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <p>
-    Built using <strong>Arduino-based RFID hardware</strong> paired with
-    <strong>Firebase Authentication</strong> and <strong>Firestore Database</strong>, CampusTap
-    allows seamless user registration, secure login, real-time data updates, and accurate
-    account management. Administrators can monitor student activity, top up balances, and
-    manage accounts through a dedicated web dashboard.
-  </p>
+  <!-- Tailwind CSS (optional, since your site uses it) -->
+  <script src="https://cdn.tailwindcss.com"></script>
 
-  <p>
-    This thesis showcases the practical application of both hardware and software
-    technologies to create an efficient, reliable, and cashless transportation solution
-    for schools. CampusTap aims to improve safety, transparency, and convenience for
-    students and provide administrators with powerful tools for monitoring and system
-    management.
-  </p>
-</section>
+  <style>
+    .about-container {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 30px;
+      background: #ffffff;
+      border-radius: 15px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+      animation: fadeIn 0.8s ease;
+    }
+
+    .about-container h2 {
+      font-size: 32px;
+      margin-bottom: 15px;
+      color: #1a73e8;
+      text-align: center;
+      letter-spacing: 1px;
+    }
+
+    .about-container p {
+      font-size: 17px;
+      line-height: 1.8;
+      margin-bottom: 20px;
+      color: #333;
+      text-align: justify;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+
+</head>
+<body class="bg-gray-100">
+
+  <!-- Navigation (optional) -->
+  <nav class="bg-green-700 text-white p-4">
+    <div class="max-w-6xl mx-auto flex justify-between">
+      <h1 class="text-xl font-bold">CampusTap</h1>
+      <a href="index.html" class="underline hover:text-gray-300">Back to Login</a>
+    </div>
+  </nav>
+
+  <div class="about-container">
+
+    <h2>About CampusTap</h2>
+
+    <p>
+      <strong>CampusTap</strong> is a thesis capstone project designed to modernize school
+      transportation through a fully digital tap-to-ride system. It integrates RFID
+      identification, real-time GPS tracking, and cloud-based account management to create
+      a safer, faster, and more efficient commuting experience for students. Each tap
+      automatically updates the student’s ride record and balance, eliminating the need for
+      manual fare collection.
+    </p>
+
+    <p>
+      The system combines <strong>Arduino-powered RFID hardware</strong> with a
+      <strong>Firebase backend</strong> that handles authentication, user data, balance
+      management, and ride tracking. The web application is built using HTML, CSS, and
+      JavaScript, providing students with a clean and responsive interface for checking
+      their balance, viewing their ride history, and monitoring real-time bus locations.
+      Administrators can manage accounts, top up balances, and monitor system activity.
+    </p>
+
+    <p>
+      This project demonstrates the practical application of embedded systems, wireless
+      communication, and cloud technologies in creating a reliable and scalable
+      transportation solution. CampusTap aims to improve transparency, convenience, and
+      safety while introducing an innovative cashless transportation method for academic
+      institutions.
+    </p>
+
+  </div>
+
+</body>
+</html>
