@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
@@ -8,15 +8,14 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <style>
-    #map { height: 320px; border-radius: 8px; }
-    .history { max-height: 260px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; }
-    .history thead th { position: sticky; top: 0; background: #166534; color: #fff; }
+    #map { height: 320px; border-radius:8px; }
+    .history { max-height:260px; overflow:auto; border-radius:8px; }
   </style>
 </head>
 <body class="bg-green-700 min-h-screen text-gray-900">
-  <nav class="bg-white p-4 flex justify-between items-center">
+  <nav class="bg-white shadow p-4 flex justify-between items-center">
     <div class="font-bold text-green-700">CampusTap — Student</div>
-    <div class="flex gap-4 items-center">
+    <div class="space-x-4">
       <a href="about.html" class="text-green-700">About</a>
       <a href="account.html" class="text-green-700">Account</a>
       <button id="logout" class="bg-red-600 text-white px-3 py-1 rounded">Logout</button>
@@ -39,7 +38,9 @@
       <h3 class="text-green-700 font-semibold mb-2">Your Ride History</h3>
       <div class="history">
         <table class="w-full text-sm">
-          <thead><tr><th class="p-2 text-left">Date/Time</th><th class="text-left">Route</th><th class="text-left">Fare</th></tr></thead>
+          <thead class="bg-green-700 text-white sticky top-0">
+            <tr><th class="p-2 text-left">Date/Time</th><th class="p-2 text-left">Route</th><th class="p-2 text-left">Fare</th></tr>
+          </thead>
           <tbody id="ridesTbody"></tbody>
         </table>
       </div>
@@ -47,81 +48,77 @@
   </main>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-    import { firebaseConfig } from "./firebase-config.js";
+    import { auth, db } from "./firebase-config.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import {
+      doc, getDoc, updateDoc, collection, addDoc, query, where, orderBy, onSnapshot, runTransaction
+    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-    // Firebase init
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    // Mock storage for rides (per user) while RFID is not yet ready
     const FARE = 10;
-    function ridesKey(uid){ return "rides:"+uid; }
-    function getRides(uid){ return JSON.parse(localStorage.getItem(ridesKey(uid))||"[]"); }
-    function saveRides(uid, rides){ localStorage.setItem(ridesKey(uid), JSON.stringify(rides)); }
-
-    // UI elements
-    const balanceEl = document.getElementById("balance");
-    const ridesTbody = document.getElementById("ridesTbody");
-    document.getElementById("logout").onclick = ()=> signOut(auth).then(()=> location.href="index.html");
-
-    let uid = null;
+    const ROUTE_NAME = "USC Talamban Loop";
 
     // Leaflet map
     const map = L.map('map').setView([10.3541, 123.9114], 15);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    const loop = [
-      [10.3541,123.9114],[10.3560,123.9120],[10.3570,123.9095],[10.3550,123.9085],[10.3535,123.9105],[10.3541,123.9114]
-    ];
+    const loop = [[10.3541,123.9114],[10.3560,123.9120],[10.3570,123.9095],[10.3550,123.9085],[10.3535,123.9105],[10.3541,123.9114]];
     L.polyline(loop, {color:'#16a34a'}).addTo(map);
-    const shuttle = L.marker(loop[0]).addTo(map).bindPopup("Shuttle");
-    let i=0; setInterval(()=>{ i=(i+1)%loop.length; shuttle.setLatLng(loop[i]); }, 1500);
+    const shuttle = L.marker(loop[0]).addTo(map);
+    let idx = 0;
+    setInterval(()=> { idx=(idx+1)%loop.length; shuttle.setLatLng(loop[idx]); }, 1500);
 
-    function renderRides(){
-      const rides = getRides(uid).slice().reverse(); // latest first
-      ridesTbody.innerHTML = "";
-      rides.forEach(r => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td class="p-2">${r.time}</td><td class="p-2">${r.route}</td><td class="p-2">₱${r.fare}</td>`;
-        ridesTbody.appendChild(tr);
-      });
-    }
+    onAuthStateChanged(getAuth(), async (user) => {
+      if (!user) return location.href = "index.html";
+      const userRef = doc(db, "users", user.uid);
 
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) { location.href = "index.html"; return; }
-      uid = user.uid;
-      const userRef = doc(db, "users", uid);
+      // realtime balance
       onSnapshot(userRef, (snap) => {
-        const d = snap.data();
-        if (!d) return;
-        balanceEl.textContent = "₱" + (d.balance ?? 0);
+        const data = snap.data();
+        document.getElementById("balance").textContent = "₱" + (data?.balance ?? 0);
       });
-      renderRides();
+
+      // realtime ride history for this user
+      const q = query(collection(db, "rides"), where("uid", "==", user.uid), orderBy("timestamp", "desc"));
+      onSnapshot(q, (qs) => {
+        const tbody = document.getElementById("ridesTbody");
+        tbody.innerHTML = "";
+        qs.forEach(docSnap => {
+          const d = docSnap.data();
+          tbody.innerHTML += `<tr><td class="p-2">${new Date(d.timestamp).toLocaleString()}</td><td class="p-2">${d.route}</td><td class="p-2">₱${d.fare}</td></tr>`;
+        });
+      });
+
+      document.getElementById("tapBtn").onclick = async () => {
+        try {
+          // Use transaction to deduct balance and add ride
+          await runTransaction(db, async (t) => {
+            const userDoc = await t.get(userRef);
+            if (!userDoc.exists()) throw new Error("User profile missing.");
+            const bal = userDoc.data().balance ?? 0;
+            if (bal < FARE) throw new Error("Insufficient balance.");
+            t.update(userRef, { balance: bal - FARE });
+
+            const ridesCol = collection(db, "rides");
+            // Create ride doc
+            const newRide = {
+              uid: user.uid,
+              route: ROUTE_NAME,
+              fare: FARE,
+              timestamp: Date.now(),
+              time: new Date().toLocaleString()
+            };
+            // Firestore modular SDK: use addDoc outside t (transaction can't create new docs easily),
+            // but to keep atomicity we use t.set on a new doc ref:
+            const newRef = doc(ridesCol); // new doc ref
+            t.set(newRef, newRide);
+          });
+          // success → UI updates automatically via onSnapshot
+        } catch (err) {
+          alert(err.message);
+        }
+      };
     });
 
-    document.getElementById("tapBtn").onclick = async () => {
-      if (!uid) return;
-      const userRef = doc(db, "users", uid);
-      const snap = await getDoc(userRef);
-      if (!snap.exists()) return alert("Profile missing.");
-      const data = snap.data();
-      const bal = data.balance ?? 0;
-      if (bal < FARE) return alert("Insufficient balance.");
-
-      // 1) update balance in Firestore
-      await updateDoc(userRef, { balance: bal - FARE });
-
-      // 2) record ride locally with timestamp
-      const now = new Date();
-      const ride = { time: now.toLocaleString(), route: "USC Talamban Loop", fare: FARE };
-      const rides = getRides(uid);
-      rides.push(ride);
-      saveRides(uid, rides);
-      renderRides();
-    };
+    document.getElementById("logout").onclick = () => signOut(getAuth());
   </script>
 </body>
 </html>
