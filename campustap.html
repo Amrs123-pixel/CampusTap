@@ -1,124 +1,45 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <title>CampusTap — Student</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <style>
-    #map { height: 320px; border-radius:8px; }
-    .history { max-height:260px; overflow:auto; border-radius:8px; }
-  </style>
-</head>
-<body class="bg-green-700 min-h-screen text-gray-900">
-  <nav class="bg-white shadow p-4 flex justify-between items-center">
-    <div class="font-bold text-green-700">CampusTap — Student</div>
-    <div class="space-x-4">
-      <a href="about.html" class="text-green-700">About</a>
-      <a href="account.html" class="text-green-700">Account</a>
-      <button id="logout" class="bg-red-600 text-white px-3 py-1 rounded">Logout</button>
-    </div>
-  </nav>
+<!-- GOOGLE MAP SECTION -->
+<div id="map" style="width: 100%; height: 350px; border-radius: 10px; margin-top: 20px;"></div>
 
-  <main class="max-w-5xl mx-auto p-6 grid gap-6">
-    <section class="bg-white p-4 rounded shadow">
-      <div class="flex justify-between items-center">
-        <div class="text-lg font-semibold text-green-700">USC Talamban Loop</div>
-        <div>Balance: <span id="balance" class="font-bold">₱—</span></div>
-      </div>
-      <div id="map" class="mt-3"></div>
-      <div class="text-right mt-4">
-        <button id="tapBtn" class="bg-green-600 text-white px-4 py-2 rounded">Tap to Ride (₱10)</button>
-      </div>
-    </section>
+<script>
+  let map;
+  let marker;
 
-    <section class="bg-white p-4 rounded shadow">
-      <h3 class="text-green-700 font-semibold mb-2">Your Ride History</h3>
-      <div class="history">
-        <table class="w-full text-sm">
-          <thead class="bg-green-700 text-white sticky top-0">
-            <tr><th class="p-2 text-left">Date/Time</th><th class="p-2 text-left">Route</th><th class="p-2 text-left">Fare</th></tr>
-          </thead>
-          <tbody id="ridesTbody"></tbody>
-        </table>
-      </div>
-    </section>
-  </main>
-
-  <script type="module">
-    import { auth, db } from "./firebase-config.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-    import {
-      doc, getDoc, updateDoc, collection, addDoc, query, where, orderBy, onSnapshot, runTransaction
-    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-
-    const FARE = 10;
-    const ROUTE_NAME = "USC Talamban Loop";
-
-    // Leaflet map
-    const map = L.map('map').setView([10.3541, 123.9114], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    const loop = [[10.3541,123.9114],[10.3560,123.9120],[10.3570,123.9095],[10.3550,123.9085],[10.3535,123.9105],[10.3541,123.9114]];
-    L.polyline(loop, {color:'#16a34a'}).addTo(map);
-    const shuttle = L.marker(loop[0]).addTo(map);
-    let idx = 0;
-    setInterval(()=> { idx=(idx+1)%loop.length; shuttle.setLatLng(loop[idx]); }, 1500);
-
-    onAuthStateChanged(getAuth(), async (user) => {
-      if (!user) return location.href = "index.html";
-      const userRef = doc(db, "users", user.uid);
-
-      // realtime balance
-      onSnapshot(userRef, (snap) => {
-        const data = snap.data();
-        document.getElementById("balance").textContent = "₱" + (data?.balance ?? 0);
-      });
-
-      // realtime ride history for this user
-      const q = query(collection(db, "rides"), where("uid", "==", user.uid), orderBy("timestamp", "desc"));
-      onSnapshot(q, (qs) => {
-        const tbody = document.getElementById("ridesTbody");
-        tbody.innerHTML = "";
-        qs.forEach(docSnap => {
-          const d = docSnap.data();
-          tbody.innerHTML += `<tr><td class="p-2">${new Date(d.timestamp).toLocaleString()}</td><td class="p-2">${d.route}</td><td class="p-2">₱${d.fare}</td></tr>`;
-        });
-      });
-
-      document.getElementById("tapBtn").onclick = async () => {
-        try {
-          // Use transaction to deduct balance and add ride
-          await runTransaction(db, async (t) => {
-            const userDoc = await t.get(userRef);
-            if (!userDoc.exists()) throw new Error("User profile missing.");
-            const bal = userDoc.data().balance ?? 0;
-            if (bal < FARE) throw new Error("Insufficient balance.");
-            t.update(userRef, { balance: bal - FARE });
-
-            const ridesCol = collection(db, "rides");
-            // Create ride doc
-            const newRide = {
-              uid: user.uid,
-              route: ROUTE_NAME,
-              fare: FARE,
-              timestamp: Date.now(),
-              time: new Date().toLocaleString()
-            };
-            // Firestore modular SDK: use addDoc outside t (transaction can't create new docs easily),
-            // but to keep atomicity we use t.set on a new doc ref:
-            const newRef = doc(ridesCol); // new doc ref
-            t.set(newRef, newRide);
-          });
-          // success → UI updates automatically via onSnapshot
-        } catch (err) {
-          alert(err.message);
-        }
-      };
+  // Initialize Google Map
+  function initMap() {
+    map = new google.maps.Map(document.getElementById("map"), {
+      zoom: 16,
+      center: { lat: 10.3157, lng: 123.8854 }, // default: Cebu
     });
 
-    document.getElementById("logout").onclick = () => signOut(getAuth());
-  </script>
-</body>
-</html>
+    marker = new google.maps.Marker({
+      map: map,
+      title: "Student Location",
+    });
+
+    trackLiveLocation(); // start live tracking
+  }
+
+  // 🔥 LIVE TRACKING USING FIRESTORE
+  function trackLiveLocation() {
+    const user = firebase.auth().currentUser;
+    if (!user) return console.log("No user logged in.");
+
+    const docRef = db.collection("locations").doc(user.uid);
+
+    docRef.onSnapshot((doc) => {
+      if (!doc.exists) return console.log("No location data yet.");
+
+      const data = doc.data();
+      const newPos = { lat: data.lat, lng: data.lng };
+
+      marker.setPosition(newPos);
+      map.setCenter(newPos);
+    });
+  }
+</script>
+
+<!-- GOOGLE MAPS API SCRIPT (PUT YOUR API KEY BELOW) -->
+<script async 
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCC6zhTh69EzWjLssvZx3HKbbquICIrK2s&callback=initMap">
+</script>
