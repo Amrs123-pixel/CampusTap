@@ -1,271 +1,184 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
+  <meta charset="UTF-8" />
   <title>CampusTap — Admin Dashboard</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body class="bg-green-700 min-h-screen text-gray-900">
 
+  <!-- NAVBAR -->
   <nav class="bg-white shadow p-4 flex justify-between items-center">
-    <div class="font-bold text-green-700">📊 CampusTap Admin</div>
-    <div class="space-x-4">
-      <a href="campustap.html" class="text-green-700 font-semibold">Student View</a>
-      <a href="account.html" class="text-green-700 font-semibold">Account</a>
-      <button id="logoutBtn" class="bg-red-600 text-white px-3 py-1 rounded">Logout</button>
-    </div>
+    <h1 class="text-xl font-bold text-green-700">📊 CampusTap Admin</h1>
+    <a href="campustap.html" class="text-green-700 font-semibold">Back to Map</a>
   </nav>
 
-  <main class="max-w-6xl mx-auto p-6 space-y-6">
+  <main class="max-w-6xl mx-auto p-6 space-y-10">
 
-    <!-- KPIs + Charts -->
-    <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div class="bg-white p-4 rounded shadow">
-        <h3 class="font-semibold text-green-700 mb-2">Total Rides</h3>
-        <canvas id="ridesChart"></canvas>
-      </div>
-      <div class="bg-white p-4 rounded shadow">
-        <h3 class="font-semibold text-green-700 mb-2">Total Revenue</h3>
-        <canvas id="revenueChart"></canvas>
-      </div>
-      <div class="bg-white p-4 rounded shadow">
-        <h3 class="font-semibold text-green-700 mb-2">Active Shuttles</h3>
-        <canvas id="shuttleChart"></canvas>
-      </div>
+    <!-- USER MANAGEMENT -->
+    <section class="bg-white rounded-lg shadow p-6">
+      <h2 class="text-xl font-bold text-green-700 mb-4">👥 Manage Student Accounts</h2>
+
+      <table class="w-full text-left border">
+        <thead>
+          <tr class="bg-green-600 text-white">
+            <th class="p-2">Name</th>
+            <th class="p-2">Email</th>
+            <th class="p-2">Balance</th>
+            <th class="p-2">Action</th>
+          </tr>
+        </thead>
+        <tbody id="usersTable"></tbody>
+      </table>
     </section>
 
-    <!-- Manage Accounts & Top-Up -->
-    <section class="bg-white p-4 rounded shadow">
-      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
-        <h3 class="text-lg font-semibold text-green-700">Manage Accounts (Top-Up)</h3>
-        <input id="searchInput" type="text" placeholder="Search name or email"
-               class="border p-2 rounded w-full md:w-72 text-sm">
-      </div>
+    <!-- RECENT TOP UPS -->
+    <section class="bg-white rounded-lg shadow p-6">
+      <h2 class="text-xl font-bold text-green-700 mb-4">💰 Recent Top-Ups</h2>
 
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead class="bg-green-700 text-white sticky top-0">
-            <tr>
-              <th class="p-2 text-left">Name</th>
-              <th class="p-2 text-left">Email</th>
-              <th class="p-2 text-left">Role</th>
-              <th class="p-2 text-left">Balance</th>
-              <th class="p-2 text-left">Top-Up</th>
-            </tr>
-          </thead>
-          <tbody id="usersTbody"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Recent Rides -->
-    <section class="bg-white p-4 rounded shadow">
-      <h3 class="text-lg font-semibold text-green-700 mb-2">Recent Rides</h3>
-      <div class="overflow-x-auto max-h-64">
-        <table class="w-full text-xs">
-          <thead class="bg-green-700 text-white sticky top-0">
-            <tr>
-              <th class="p-2 text-left">Time</th>
-              <th class="p-2 text-left">Student</th>
-              <th class="p-2 text-left">Route</th>
-              <th class="p-2 text-left">Fare</th>
-            </tr>
-          </thead>
-          <tbody id="ridesTbody"></tbody>
-        </table>
-      </div>
+      <table class="w-full text-left border">
+        <thead>
+          <tr class="bg-green-600 text-white">
+            <th class="p-2">Student</th>
+            <th class="p-2">Amount</th>
+            <th class="p-2">Time</th>
+          </tr>
+        </thead>
+        <tbody id="topUpList"></tbody>
+      </table>
     </section>
 
   </main>
 
+
+  <!-- FIREBASE -->
   <script type="module">
     import { auth, db } from "./firebase-config.js";
-    import {
-      onAuthStateChanged,
-      signOut
-    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+
     import {
       collection,
+      doc,
+      getDocs,
+      getDoc,
+      updateDoc,
+      addDoc,
       query,
       orderBy,
-      onSnapshot,
-      doc,
-      updateDoc,
-      getDoc,
-      addDoc,
-      where
+      limit
     } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-    const logoutBtn = document.getElementById("logoutBtn");
-    const usersTbody = document.getElementById("usersTbody");
-    const ridesTbody = document.getElementById("ridesTbody");
-    const searchInput = document.getElementById("searchInput");
+    import {
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
-    logoutBtn.onclick = () => signOut(auth);
-
-    let allUsers = [];
-    let allRides = [];
-
-    let ridesChart, revenueChart, shuttleChart;
-
+    /* ------------------------------
+       CHECK IF ADMIN IS LOGGED IN
+    ------------------------------ */
     onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        location.href = "index.html";
-        return;
-      }
+      if (!user) return location.href = "index.html";
 
-      const meRef = doc(db, "users", user.uid);
-      const meSnap = await getDoc(meRef);
-      if (!meSnap.exists() || meSnap.data().role !== "admin") {
-        location.href = "campustap.html";
-        return;
-      }
+      const snap = await getDoc(doc(db, "users", user.uid));
+      if (!snap.exists() || snap.data().role !== "admin")
+        return location.href = "campustap.html";
 
-      subscribeUsers();
-      subscribeRides();
+      loadUsers();
+      loadRecentTopUps();
     });
 
-    function subscribeUsers() {
-      const qUsers = query(collection(db, "users"), orderBy("fullName"));
-      onSnapshot(qUsers, (qs) => {
-        allUsers = qs.docs.map(d => ({ id: d.id, ...d.data() }));
-        renderUsers();
-      });
-    }
 
-    function renderUsers() {
-      const term = (searchInput.value || "").toLowerCase();
-      usersTbody.innerHTML = "";
+    /* ------------------------------
+       LOAD USERS TABLE
+    ------------------------------ */
+    async function loadUsers() {
+      const table = document.getElementById("usersTable");
+      table.innerHTML = "";
 
-      allUsers
-        .filter(u =>
-          (`${u.fullName || ""} ${u.email || ""}`.toLowerCase().includes(term))
-        )
-        .forEach((u) => {
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td class="p-2">${u.fullName || "—"}</td>
-            <td class="p-2">${u.email || "—"}</td>
-            <td class="p-2">${u.role || "student"}</td>
-            <td class="p-2 font-semibold">₱${u.balance ?? 0}</td>
+      const users = await getDocs(collection(db, "users"));
+
+      users.forEach(userDoc => {
+        const user = userDoc.data();
+        const uid = userDoc.id;
+
+        if (user.role !== "student") return; // show only students
+
+        table.innerHTML += `
+          <tr class="border-b">
+            <td class="p-2">${user.fullName}</td>
+            <td class="p-2">${user.email}</td>
+            <td class="p-2 font-semibold">₱${user.balance}</td>
             <td class="p-2">
-              <div class="flex items-center gap-2">
-                <input id="amt-${u.id}" type="number"
-                       class="border rounded px-2 py-1 w-24 text-xs"
-                       placeholder="Amount">
-                <button data-topup="${u.id}"
-                        class="bg-green-600 text-white px-3 py-1 rounded text-xs">
-                  Top-Up
-                </button>
-              </div>
+              <button class="bg-green-600 text-white px-3 py-1 rounded"
+                      onclick="startTopUp('${uid}', '${user.fullName}', ${user.balance})">
+                Top-Up
+              </button>
             </td>
-          `;
-          usersTbody.appendChild(tr);
-        });
-
-      usersTbody.querySelectorAll("[data-topup]").forEach((btn) => {
-        btn.onclick = async () => {
-          const uid = btn.dataset.topup;
-          const input = document.getElementById(`amt-${uid}`);
-          const amount = Number(input.value || 0);
-          if (!amount || amount <= 0) return alert("Enter a positive amount.");
-
-          if (!confirm(`Top-up ₱${amount} for this account?`)) return;
-
-          try {
-            const ref = doc(db, "users", uid);
-            const snap = await getDoc(ref);
-            if (!snap.exists()) return alert("User not found.");
-            const current = snap.data().balance ?? 0;
-
-            await updateDoc(ref, { balance: current + amount });
-
-            // record top-up
-            await addDoc(collection(db, "topups"), {
-              userId: uid,
-              amount,
-              timestamp: Date.now()
-            });
-
-            input.value = "";
-            alert("Top-up successful.");
-          } catch (err) {
-            alert(err.message);
-          }
-        };
-      });
-    }
-
-    searchInput.addEventListener("input", renderUsers);
-
-    function subscribeRides() {
-      const qRides = query(collection(db, "rides"), orderBy("timestamp", "desc"));
-      onSnapshot(qRides, (qs) => {
-        allRides = qs.docs.map(d => d.data());
-        renderRidesTable();
-        drawCharts();
-      });
-    }
-
-    function renderRidesTable() {
-      ridesTbody.innerHTML = "";
-      allRides.slice(0, 30).forEach((r) => {
-        const timeStr = r.time ||
-          (r.timestamp ? new Date(r.timestamp).toLocaleString() : "");
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td class="p-2">${timeStr}</td>
-          <td class="p-2">${r.userName || r.userEmail || r.userId || "—"}</td>
-          <td class="p-2">${r.route || "USC Talamban Loop"}</td>
-          <td class="p-2">₱${r.fare ?? 10}</td>
+          </tr>
         `;
-        ridesTbody.appendChild(tr);
       });
-
-      if (!allRides.length) {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td colspan="4" class="p-3 text-center text-gray-500">
-            No rides recorded yet.
-          </td>`;
-        ridesTbody.appendChild(tr);
-      }
     }
 
-    function drawCharts() {
-      const totalRides = allRides.length;
-      const totalRevenue = allRides.reduce((sum, r) => sum + (r.fare ?? 10), 0);
-      const activeShuttles = Math.min(3, (totalRides % 5) + 1); // mock logic
 
-      if (ridesChart) ridesChart.destroy();
-      if (revenueChart) revenueChart.destroy();
-      if (shuttleChart) shuttleChart.destroy();
+    /* ------------------------------
+       TOP-UP SYSTEM
+    ------------------------------ */
+    window.startTopUp = async function (userId, name, balance) {
+      let amount = prompt(`Enter top-up amount for ${name}\nCurrent Balance: ₱${balance}`);
+      if (!amount || isNaN(amount)) return alert("Invalid amount.");
 
-      ridesChart = new Chart(document.getElementById("ridesChart"), {
-        type: "bar",
-        data: {
-          labels: ["Total Rides"],
-          datasets: [{ label: "Rides", data: [totalRides] }]
-        }
+      amount = Number(amount);
+
+      // Update balance
+      await updateDoc(doc(db, "users", userId), {
+        balance: balance + amount
       });
 
-      revenueChart = new Chart(document.getElementById("revenueChart"), {
-        type: "doughnut",
-        data: {
-          labels: ["Revenue"],
-          datasets: [{ data: [totalRevenue] }]
-        }
+      // Add top-up log
+      await addDoc(collection(db, "topups"), {
+        userId: userId,
+        amount: amount,
+        timestamp: Date.now()
       });
 
-      shuttleChart = new Chart(document.getElementById("shuttleChart"), {
-        type: "pie",
-        data: {
-          labels: ["Active", "Inactive"],
-          datasets: [{ data: [activeShuttles, 3 - activeShuttles] }]
-        }
-      });
+      alert("Top-up successful!");
+      loadUsers();
+      loadRecentTopUps();
+    };
+
+
+    /* ------------------------------
+       LOAD RECENT TOP-UPS
+    ------------------------------ */
+    async function loadRecentTopUps() {
+      const list = document.getElementById("topUpList");
+      list.innerHTML = "";
+
+      const q = query(
+        collection(db, "topups"),
+        orderBy("timestamp", "desc"),
+        limit(15)
+      );
+
+      const results = await getDocs(q);
+
+      for (const entry of results.docs) {
+        const d = entry.data();
+
+        // Get student name
+        const userSnap = await getDoc(doc(db, "users", d.userId));
+        const studentName = userSnap.exists() ? userSnap.data().fullName : "Unknown user";
+
+        const date = new Date(d.timestamp).toLocaleString();
+
+        list.innerHTML += `
+          <tr class="border-b">
+            <td class="p-2">${studentName}</td>
+            <td class="p-2">₱${d.amount}</td>
+            <td class="p-2">${date}</td>
+          </tr>
+        `;
+      }
     }
   </script>
 
