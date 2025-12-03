@@ -13,17 +13,17 @@
       border-radius: 10px;
     }
 
-    .ride-box {
-      max-width: 600px;
+    .card {
+      max-width: 900px;
       margin: 20px auto;
-      background: white;
+      background: #ffffff;
       padding: 20px;
       border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
     }
 
     .ride-history-table {
-      max-height: 220px;
+      max-height: 260px;
       overflow-y: auto;
       border-radius: 8px;
       border: 1px solid #ddd;
@@ -45,15 +45,7 @@
     .ride-history-table td {
       padding: 8px;
       border-bottom: 1px solid #eee;
-    }
-
-    .map-box {
-      max-width: 900px;
-      margin: 20px auto;
-      background: #fff;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      font-size: 0.9rem;
     }
   </style>
 </head>
@@ -68,117 +60,170 @@
       <a href="about.html" class="text-green-700 font-semibold">About</a>
       <a href="account.html" class="text-green-700 font-semibold">Account</a>
       <a href="admin.html" id="adminTab" class="text-green-700 font-semibold hidden">Admin</a>
-      <button onclick="logout()" class="bg-red-600 text-white px-3 py-1 rounded">Logout</button>
+      <button id="logoutBtn" class="bg-red-600 text-white px-3 py-1 rounded">Logout</button>
     </div>
   </nav>
 
-  <!-- MAP BOX -->
-  <div class="map-box">
-    <h2 class="text-green-700 text-xl font-bold mb-2">📍 Shuttle Live Location</h2>
+  <!-- MAP + BALANCE -->
+  <section class="card">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-3">
+      <div>
+        <h2 class="text-green-700 text-lg font-bold">📍 Shuttle Live Location</h2>
+        <p class="text-xs text-gray-500">Location is updated in real time from the shuttle GPS.</p>
+      </div>
+      <div class="bg-green-50 border border-green-200 px-4 py-2 rounded text-right">
+        <div class="text-xs text-gray-600">Current Balance</div>
+        <div id="balance" class="text-xl font-bold text-green-700">₱—</div>
+      </div>
+    </div>
     <div id="map"></div>
-  </div>
+  </section>
 
-  <!-- RIDE HISTORY BOX -->
-  <div class="ride-box">
-    <h2 class="text-green-700 text-xl font-bold mb-2">🧾 Ride History (₱10)</h2>
+  <!-- RIDE HISTORY -->
+  <section class="card">
+    <h2 class="text-green-700 text-lg font-bold mb-2">🧾 Ride History (RFID Taps)</h2>
+    <p class="text-xs text-gray-500 mb-2">
+      This table shows your rides recorded from RFID taps, pulled from Firestore.
+    </p>
 
     <div class="ride-history-table">
       <table>
         <thead>
           <tr>
-            <th>Date</th>
-            <th>Route</th>
-            <th>Fare</th>
+            <th class="text-left">Date / Time</th>
+            <th class="text-left">Route</th>
+            <th class="text-left">Fare</th>
           </tr>
         </thead>
         <tbody id="rideHistoryBody"></tbody>
       </table>
     </div>
-  </div>
+  </section>
 
-  <!-- FIREBASE MODULE -->
+  <!-- FIREBASE: AUTH + FIRESTORE -->
   <script type="module">
     import { auth, db } from "./firebase-config.js";
-    import { doc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import {
+      doc,
+      getDoc,
+      collection,
+      query,
+      where,
+      orderBy,
+      onSnapshot
+    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+    import {
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+
+    const adminTab = document.getElementById("adminTab");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const balanceEl = document.getElementById("balance");
+    const ridesTbody = document.getElementById("rideHistoryBody");
 
     let currentUser = null;
 
-    // Auth check + admin tab
+    logoutBtn.onclick = () => signOut(auth);
+
     onAuthStateChanged(auth, async (user) => {
-      if (!user) return location.href = "index.html";
-
-      currentUser = user;
-      const snap = await getDoc(doc(db, "users", user.uid));
-
-      if (snap.exists() && snap.data().role === "admin") {
-        document.getElementById("adminTab").classList.remove("hidden");
+      if (!user) {
+        location.href = "index.html";
+        return;
       }
+      currentUser = user;
 
-      loadRideHistory();
-    });
+      // Subscribe to user profile for balance + role
+      const userRef = doc(db, "users", user.uid);
+      onSnapshot(userRef, (snap) => {
+        if (!snap.exists()) return;
+        const data = snap.data();
+        const bal = data.balance ?? 0;
+        balanceEl.textContent = "₱" + bal;
 
-    function logout() {
-      signOut(auth);
-    }
-
-    function loadRideHistory() {
-      const tbody = document.getElementById("rideHistoryBody");
-      tbody.innerHTML = "";
-
-      let rides = JSON.parse(localStorage.getItem(currentUser.uid + "_rides")) || [];
-
-      rides.forEach(r => {
-        tbody.innerHTML += `
-          <tr>
-            <td>${r.date}</td>
-            <td>${r.route}</td>
-            <td>₱${r.fare}</td>
-          </tr>`;
+        if (data.role === "admin") {
+          adminTab.classList.remove("hidden");
+        }
       });
-    }
 
-    /* REAL-TIME GPS TRACKING */
-    window.startTracking = function() {
+      // Subscribe to rides collection for this user
+      const ridesRef = collection(db, "rides");
+      const qRides = query(
+        ridesRef,
+        where("userId", "==", user.uid),
+        orderBy("timestamp", "desc")
+      );
+
+      onSnapshot(qRides, (qs) => {
+        ridesTbody.innerHTML = "";
+        qs.forEach((docSnap) => {
+          const r = docSnap.data();
+          const dateStr = r.time ||
+            (r.timestamp ? new Date(r.timestamp).toLocaleString() : "");
+          const route = r.route || "USC Talamban Loop";
+          const fare = r.fare ?? 10;
+
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${dateStr}</td>
+            <td>${route}</td>
+            <td>₱${fare}</td>
+          `;
+          ridesTbody.appendChild(tr);
+        });
+
+        if (qs.empty) {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td colspan="3" class="text-center text-xs text-gray-500 py-3">
+              No rides recorded yet.
+            </td>`;
+          ridesTbody.appendChild(tr);
+        }
+      });
+
+      // Start GPS tracking subscription (calls global map updater)
       const shuttleRef = doc(db, "shuttle", "shuttle1");
-
       onSnapshot(shuttleRef, (snap) => {
         if (!snap.exists()) return;
-
-        const data = snap.data();
-        const pos = { lat: data.lat, lng: data.lng };
-
-        console.log("GPS Update:", pos);
-
-        shuttleMarker.setPosition(pos);
-        map.setCenter(pos);
+        const d = snap.data();
+        if (typeof d.lat === "number" && typeof d.lng === "number" && window.setShuttlePosition) {
+          window.setShuttlePosition({ lat: d.lat, lng: d.lng });
+        }
       });
-    };
+    });
   </script>
 
-  <!-- GOOGLE MAPS & TRACKING -->
+  <!-- GOOGLE MAPS: init + helper -->
   <script>
     let map;
     let shuttleMarker;
 
     function initMap() {
+      const uscTalamban = { lat: 10.3541, lng: 123.9114 };
+
       map = new google.maps.Map(document.getElementById("map"), {
         zoom: 16,
-        center: { lat: 10.3541, lng: 123.9114 }
+        center: uscTalamban
       });
 
       shuttleMarker = new google.maps.Marker({
-        map: map,
-        position: { lat: 10.3541, lng: 123.9114 },
+        map,
+        position: uscTalamban,
         title: "Shuttle"
       });
-
-      startTracking();
     }
+
+    // Called from Firestore listener in the module script
+    window.setShuttlePosition = function (pos) {
+      if (!map || !shuttleMarker) return;
+      shuttleMarker.setPosition(pos);
+      map.setCenter(pos);
+    };
   </script>
 
-  <!-- GOOGLE MAPS API SCRIPT (FIXED) -->
-  <script 
+  <!-- GOOGLE MAPS API SCRIPT (keep your key) -->
+  <script
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCC6zhTh69EzWjLssvZx3HKbbquICIrK2s&callback=initMap"
     async defer>
   </script>
