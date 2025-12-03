@@ -2,115 +2,123 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CampusTap — Admin Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CampusTap Admin Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body class="bg-green-700 min-h-screen text-gray-900">
-
   <!-- NAVBAR -->
-  <nav class="bg-white shadow p-4 flex justify-between items-center">
+  <nav class="bg-white shadow p-4 flex justify-between">
     <h1 class="text-xl font-bold text-green-700">📊 CampusTap Admin</h1>
     <a href="campustap.html" class="text-green-700 font-semibold">Back to Map</a>
   </nav>
 
-  <main class="max-w-6xl mx-auto p-6 space-y-10">
+  <main class="max-w-6xl mx-auto p-6 space-y-6">
 
-    <!-- USER MANAGEMENT -->
-    <section class="bg-white rounded-lg shadow p-6">
-      <h2 class="text-xl font-bold text-green-700 mb-4">👥 Manage Student Accounts</h2>
+    <!-- ============================= -->
+    <!--   TOP ANALYTICS CHARTS        -->
+    <!-- ============================= -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-      <table class="w-full text-left border">
+      <!-- Total Rides -->
+      <div class="bg-white p-4 rounded-lg shadow">
+        <h2 class="text-lg font-semibold text-green-700">Total Rides</h2>
+        <canvas id="ridesChart"></canvas>
+      </div>
+
+      <!-- Revenue -->
+      <div class="bg-white p-4 rounded-lg shadow">
+        <h2 class="text-lg font-semibold text-green-700">Total Revenue</h2>
+        <canvas id="revenueChart"></canvas>
+      </div>
+
+      <!-- Active Shuttle -->
+      <div class="bg-white p-4 rounded-lg shadow">
+        <h2 class="text-lg font-semibold text-green-700">Active Shuttle</h2>
+        <canvas id="shuttleChart"></canvas>
+      </div>
+
+    </div>
+
+    <!-- ============================= -->
+    <!--   MANAGE ACCOUNTS             -->
+    <!-- ============================= -->
+    <div class="bg-white p-5 rounded-lg shadow">
+      <h2 class="text-lg font-semibold text-green-700 mb-3">👥 Manage Student Accounts</h2>
+      <table class="w-full border">
         <thead>
-          <tr class="bg-green-600 text-white">
+          <tr class="bg-green-700 text-white">
             <th class="p-2">Name</th>
             <th class="p-2">Email</th>
             <th class="p-2">Balance</th>
             <th class="p-2">Action</th>
           </tr>
         </thead>
-        <tbody id="usersTable"></tbody>
+        <tbody id="studentTable"></tbody>
       </table>
-    </section>
+    </div>
 
-    <!-- RECENT TOP UPS -->
-    <section class="bg-white rounded-lg shadow p-6">
-      <h2 class="text-xl font-bold text-green-700 mb-4">💰 Recent Top-Ups</h2>
-
-      <table class="w-full text-left border">
+    <!-- ============================= -->
+    <!--   RECENT TOP-UPS              -->
+    <!-- ============================= -->
+    <div class="bg-white p-5 rounded-lg shadow">
+      <h2 class="text-lg font-semibold text-green-700 mb-3">💵 Recent Top-Ups</h2>
+      <table class="w-full border">
         <thead>
-          <tr class="bg-green-600 text-white">
+          <tr class="bg-green-700 text-white">
             <th class="p-2">Student</th>
             <th class="p-2">Amount</th>
             <th class="p-2">Time</th>
           </tr>
         </thead>
-        <tbody id="topUpList"></tbody>
+        <tbody id="topupTable"></tbody>
       </table>
-    </section>
+    </div>
 
   </main>
 
-
-  <!-- FIREBASE -->
+  <!-- ================= FIREBASE LOGIC ================= -->
   <script type="module">
     import { auth, db } from "./firebase-config.js";
-
-    import {
-      collection,
-      doc,
-      getDocs,
-      getDoc,
-      updateDoc,
-      addDoc,
-      query,
-      orderBy,
-      limit
+    import { 
+      getDocs, collection, doc, getDoc, updateDoc, addDoc, query, orderBy 
     } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-    import {
-      onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
-    /* ------------------------------
-       CHECK IF ADMIN IS LOGGED IN
-    ------------------------------ */
     onAuthStateChanged(auth, async (user) => {
       if (!user) return location.href = "index.html";
 
       const snap = await getDoc(doc(db, "users", user.uid));
-      if (!snap.exists() || snap.data().role !== "admin")
+      if (!snap.exists() || snap.data().role !== "admin") {
+        alert("Access denied: Admin only.");
         return location.href = "campustap.html";
+      }
 
-      loadUsers();
-      loadRecentTopUps();
+      loadStudents();
+      loadTopUps();
+      loadAnalytics();
     });
 
-
-    /* ------------------------------
-       LOAD USERS TABLE
-    ------------------------------ */
-    async function loadUsers() {
-      const table = document.getElementById("usersTable");
+    /* ---------------- Load Students ---------------- */
+    async function loadStudents() {
+      const table = document.getElementById("studentTable");
       table.innerHTML = "";
 
-      const users = await getDocs(collection(db, "users"));
-
-      users.forEach(userDoc => {
-        const user = userDoc.data();
-        const uid = userDoc.id;
-
-        if (user.role !== "student") return; // show only students
+      const q = await getDocs(collection(db, "users"));
+      q.forEach(docu => {
+        const u = docu.data();
+        if (u.role !== "student") return;
 
         table.innerHTML += `
           <tr class="border-b">
-            <td class="p-2">${user.fullName}</td>
-            <td class="p-2">${user.email}</td>
-            <td class="p-2 font-semibold">₱${user.balance}</td>
+            <td class="p-2">${u.fullName}</td>
+            <td class="p-2">${u.email}</td>
+            <td class="p-2">₱${u.balance}</td>
             <td class="p-2">
-              <button class="bg-green-600 text-white px-3 py-1 rounded"
-                      onclick="startTopUp('${uid}', '${user.fullName}', ${user.balance})">
+              <button class="bg-green-600 text-white px-3 py-1 rounded" onclick="topUp('${docu.id}', '${u.fullName}')">
                 Top-Up
               </button>
             </td>
@@ -119,66 +127,109 @@
       });
     }
 
+    /* ---------------- Top-Up System ---------------- */
+    window.topUp = async function(uid, name) {
+      let amount = prompt("Enter amount to add:");
+      if (!amount) return;
+      amount = parseInt(amount);
 
-    /* ------------------------------
-       TOP-UP SYSTEM
-    ------------------------------ */
-    window.startTopUp = async function (userId, name, balance) {
-      let amount = prompt(`Enter top-up amount for ${name}\nCurrent Balance: ₱${balance}`);
-      if (!amount || isNaN(amount)) return alert("Invalid amount.");
+      const userRef = doc(db, "users", uid);
+      const snap = await getDoc(userRef);
+      const current = snap.data().balance;
 
-      amount = Number(amount);
+      await updateDoc(userRef, { balance: current + amount });
 
-      // Update balance
-      await updateDoc(doc(db, "users", userId), {
-        balance: balance + amount
-      });
-
-      // Add top-up log
+      // save topup log
       await addDoc(collection(db, "topups"), {
-        userId: userId,
-        amount: amount,
-        timestamp: Date.now()
+        uid,
+        name,
+        amount,
+        time: new Date().toLocaleString()
       });
 
-      alert("Top-up successful!");
-      loadUsers();
-      loadRecentTopUps();
+      loadStudents();
+      loadTopUps();
+      loadAnalytics();
     };
 
+    /* ---------------- Load Top-Ups ---------------- */
+    async function loadTopUps() {
+      const table = document.getElementById("topupTable");
+      table.innerHTML = "";
 
-    /* ------------------------------
-       LOAD RECENT TOP-UPS
-    ------------------------------ */
-    async function loadRecentTopUps() {
-      const list = document.getElementById("topUpList");
-      list.innerHTML = "";
+      const q = await getDocs(query(collection(db, "topups"), orderBy("time", "desc")));
 
-      const q = query(
-        collection(db, "topups"),
-        orderBy("timestamp", "desc"),
-        limit(15)
-      );
-
-      const results = await getDocs(q);
-
-      for (const entry of results.docs) {
-        const d = entry.data();
-
-        // Get student name
-        const userSnap = await getDoc(doc(db, "users", d.userId));
-        const studentName = userSnap.exists() ? userSnap.data().fullName : "Unknown user";
-
-        const date = new Date(d.timestamp).toLocaleString();
-
-        list.innerHTML += `
+      q.forEach(t => {
+        const d = t.data();
+        table.innerHTML += `
           <tr class="border-b">
-            <td class="p-2">${studentName}</td>
+            <td class="p-2">${d.name}</td>
             <td class="p-2">₱${d.amount}</td>
-            <td class="p-2">${date}</td>
+            <td class="p-2">${d.time}</td>
           </tr>
         `;
+      });
+    }
+
+    /* ---------------- Analytics (Charts) ---------------- */
+    async function loadAnalytics() {
+      // get all rides
+      const rideSnap = await getDocs(collection(db, "rides"));
+      let rideCount = 0;
+      rideSnap.forEach(() => rideCount++);
+
+      // revenue
+      const revenue = rideCount * 10;
+
+      // shuttle status
+      const locSnap = await getDoc(doc(db, "shuttle", "shuttle1"));
+      let active = 0;
+      let inactive = 1;
+
+      if (locSnap.exists()) {
+        const last = locSnap.data().timestamp;
+        const now = Date.now();
+
+        if (now - last < 30000) active = 1;
+        else inactive = 1;
       }
+
+      /* Draw Total Rides Chart */
+      new Chart(document.getElementById("ridesChart"), {
+        type: "bar",
+        data: {
+          labels: ["Rides"],
+          datasets: [{
+            label: "Number of Rides",
+            data: [rideCount],
+            backgroundColor: "#16a34a"
+          }]
+        }
+      });
+
+      /* Revenue Chart */
+      new Chart(document.getElementById("revenueChart"), {
+        type: "doughnut",
+        data: {
+          labels: ["Revenue"],
+          datasets: [{
+            data: [revenue],
+            backgroundColor: ["#22c55e"]
+          }]
+        }
+      });
+
+      /* Shuttle Chart */
+      new Chart(document.getElementById("shuttleChart"), {
+        type: "pie",
+        data: {
+          labels: ["Active", "Inactive"],
+          datasets: [{
+            data: [active, inactive],
+            backgroundColor: ["#16a34a", "#86efac"]
+          }]
+        }
+      });
     }
   </script>
 
