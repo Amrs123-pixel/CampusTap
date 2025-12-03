@@ -1,40 +1,175 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <title>Account</title>
+  <title>CampusTap — Account</title>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-green-700 min-h-screen text-gray-900">
-  <nav class="bg-white p-4 flex justify-between items-center"><div class="font-bold text-green-700">Account</div><div><a href="campustap.html" class="text-green-700 mr-4">Student</a><a href="admin.html" class="text-green-700 mr-4">Admin</a><button id="logout" class="bg-red-600 text-white px-3 py-1 rounded">Logout</button></div></nav>
 
-  <main class="max-w-xl mx-auto p-6">
-    <div class="bg-white p-4 rounded shadow">
-      <div class="text-sm text-gray-600">Signed in as</div>
-      <div class="mt-1 text-lg font-semibold" id="name">—</div>
-      <div class="text-sm text-gray-600" id="email">—</div>
-      <div class="mt-4 flex justify-between items-center"><div>Balance</div><div id="balance" class="text-xl font-bold">₱—</div></div>
+  <nav class="bg-white p-4 flex justify-between items-center">
+    <div class="font-bold text-green-700">Account</div>
+    <div class="space-x-4">
+      <a href="campustap.html" class="text-green-700 font-semibold">Student</a>
+      <a href="admin.html" id="adminTab" class="text-green-700 font-semibold hidden">Admin</a>
+      <button id="logoutBtn" class="bg-red-600 text-white px-3 py-1 rounded">Logout</button>
     </div>
+  </nav>
+
+  <main class="max-w-3xl mx-auto p-6 space-y-6">
+
+    <section class="bg-white p-4 rounded shadow">
+      <div class="text-sm text-gray-600">Signed in as</div>
+      <div id="name" class="mt-1 text-lg font-semibold">—</div>
+      <div id="email" class="text-sm text-gray-600">—</div>
+      <div id="role" class="text-xs text-gray-500 mt-1">Role: —</div>
+
+      <div class="mt-4 flex justify-between items-center">
+        <span>Balance</span>
+        <span id="balance" class="text-2xl font-bold text-green-700">₱—</span>
+      </div>
+    </section>
+
+    <section class="bg-white p-4 rounded shadow">
+      <h3 class="font-semibold text-green-700 mb-2 text-sm">Recent Rides</h3>
+      <div class="max-h-48 overflow-y-auto text-xs">
+        <table class="w-full">
+          <thead class="bg-green-700 text-white sticky top-0">
+            <tr>
+              <th class="p-2 text-left">Time</th>
+              <th class="p-2 text-left">Route</th>
+              <th class="p-2 text-left">Fare</th>
+            </tr>
+          </thead>
+          <tbody id="ridesTbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="bg-white p-4 rounded shadow">
+      <h3 class="font-semibold text-green-700 mb-2 text-sm">Recent Top-Ups</h3>
+      <div class="max-h-48 overflow-y-auto text-xs">
+        <table class="w-full">
+          <thead class="bg-green-700 text-white sticky top-0">
+            <tr>
+              <th class="p-2 text-left">Time</th>
+              <th class="p-2 text-left">Amount</th>
+            </tr>
+          </thead>
+          <tbody id="topupsTbody"></tbody>
+        </table>
+      </div>
+    </section>
+
   </main>
 
   <script type="module">
     import { auth, db } from "./firebase-config.js";
-    import { onAuthStateChanged, signOut, getAuth } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-    import { doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+    import {
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import {
+      doc,
+      onSnapshot,
+      collection,
+      query,
+      where,
+      orderBy
+    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-    document.getElementById("logout").onclick = ()=> signOut(getAuth());
+    const nameEl = document.getElementById("name");
+    const emailEl = document.getElementById("email");
+    const roleEl = document.getElementById("role");
+    const balEl = document.getElementById("balance");
+    const adminTab = document.getElementById("adminTab");
+    const ridesTbody = document.getElementById("ridesTbody");
+    const topupsTbody = document.getElementById("topupsTbody");
 
-    onAuthStateChanged(getAuth(), (user) => {
-      if (!user) return location.href='index.html';
-      document.getElementById('email').textContent = user.email;
-      const ref = doc(db,'users',user.uid);
-      onSnapshot(ref, snap => {
+    document.getElementById("logoutBtn").onclick = () => signOut(auth);
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        location.href = "index.html";
+        return;
+      }
+
+      emailEl.textContent = user.email;
+
+      const userRef = doc(db, "users", user.uid);
+      onSnapshot(userRef, (snap) => {
         const d = snap.data() || {};
-        document.getElementById('name').textContent = d.fullName || "(no name)";
-        document.getElementById('balance').textContent = "₱"+(d.balance ?? 0);
+        nameEl.textContent = d.fullName || "(no name)";
+        balEl.textContent = "₱" + (d.balance ?? 0);
+        roleEl.textContent = "Role: " + (d.role || "student");
+
+        if (d.role === "admin") {
+          adminTab.classList.remove("hidden");
+        }
+      });
+
+      // Recent rides
+      const ridesRef = collection(db, "rides");
+      const qRides = query(
+        ridesRef,
+        where("userId", "==", user.uid),
+        orderBy("timestamp", "desc")
+      );
+      onSnapshot(qRides, (qs) => {
+        ridesTbody.innerHTML = "";
+        qs.docs.slice(0, 10).forEach((docSnap) => {
+          const r = docSnap.data();
+          const timeStr = r.time ||
+            (r.timestamp ? new Date(r.timestamp).toLocaleString() : "");
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td class="p-2">${timeStr}</td>
+            <td class="p-2">${r.route || "USC Talamban Loop"}</td>
+            <td class="p-2">₱${r.fare ?? 10}</td>
+          `;
+          ridesTbody.appendChild(tr);
+        });
+        if (qs.empty) {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td colspan="3" class="p-2 text-center text-gray-500">
+              No rides yet.
+            </td>`;
+          ridesTbody.appendChild(tr);
+        }
+      });
+
+      // Recent top-ups
+      const topupsRef = collection(db, "topups");
+      const qTop = query(
+        topupsRef,
+        where("userId", "==", user.uid),
+        orderBy("timestamp", "desc")
+      );
+      onSnapshot(qTop, (qs) => {
+        topupsTbody.innerHTML = "";
+        qs.docs.slice(0, 10).forEach((docSnap) => {
+          const t = docSnap.data();
+          const timeStr = t.timestamp ? new Date(t.timestamp).toLocaleString() : "";
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td class="p-2">${timeStr}</td>
+            <td class="p-2 text-green-700 font-semibold">₱${t.amount}</td>
+          `;
+          topupsTbody.appendChild(tr);
+        });
+        if (qs.empty) {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td colspan="2" class="p-2 text-center text-gray-500">
+              No top-ups yet.
+            </td>`;
+          topupsTbody.appendChild(tr);
+        }
       });
     });
   </script>
+
 </body>
 </html>
