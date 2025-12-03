@@ -2,95 +2,183 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>CampusTap — Login / Register</title>
+  <title>CampusTap — Map & History</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Maps JS (replace YOUR_GOOGLE_MAPS_API_KEY) -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=YAIzaSyCC6zhTh69EzWjLssvZx3HKbbquICIrK2s&callback=initMap" async defer></script>
 </head>
-<body class="bg-green-700 min-h-screen flex items-center justify-center">
-  <div class="bg-white p-8 rounded shadow w-full max-w-md">
-    <h1 class="text-2xl font-bold text-green-700 mb-4">CampusTap</h1>
+<body class="bg-green-700 min-h-screen text-gray-900">
+  <nav class="bg-white p-4 flex justify-between items-center shadow">
+    <div class="font-bold text-green-700">CampusTap — Student</div>
+    <div class="space-x-4">
+      <a href="about.html" class="text-green-700">About</a>
+      <button id="logoutBtn" class="bg-red-600 text-white px-3 py-1 rounded">Logout</button>
+    </div>
+  </nav>
 
-    <label class="block text-sm">Full name</label>
-    <input id="fullname" class="w-full p-2 border rounded mb-3" placeholder="Juan Dela Cruz"/>
+  <main class="max-w-5xl mx-auto p-6 space-y-6">
+    <!-- Map + balance card -->
+    <section class="bg-white p-4 rounded shadow">
+      <div class="flex justify-between items-center mb-2">
+        <div>
+          <h2 class="text-lg font-semibold text-green-700">USC Talamban Loop</h2>
+          <p class="text-sm text-gray-500">Real-time shuttle location</p>
+        </div>
+        <div class="text-right">
+          <div class="text-xs text-gray-500">Balance</div>
+          <div class="text-xl font-bold">₱<span id="balance">—</span></div>
+        </div>
+      </div>
+      <div id="map" class="w-full rounded" style="height:320px; background:#eee;"></div>
+    </section>
 
-    <label class="block text-sm">Email</label>
-    <input id="email" type="email" class="w-full p-2 border rounded mb-3" placeholder="you@example.com"/>
-
-    <label class="block text-sm">Password</label>
-    <input id="password" type="password" class="w-full p-2 border rounded mb-3" placeholder="••••••"/>
-
-    <label class="block text-sm">Role</label>
-    <select id="role" class="w-full p-2 border rounded mb-4">
-      <option value="student">Student</option>
-      <option value="admin">Admin</option>
-    </select>
-
-    <button id="registerBtn" class="w-full bg-green-600 text-white py-2 rounded mb-2">Register</button>
-    <button id="loginBtn" class="w-full bg-blue-600 text-white py-2 rounded">Login</button>
-
-    <p class="mt-4 text-xs text-gray-500">
-      New users get a starting balance of ₱100. Fare per ride: ₱10.
-    </p>
-  </div>
+    <!-- Ride History -->
+    <section class="bg-white p-4 rounded shadow">
+      <h3 class="text-green-700 font-semibold mb-2">Ride History</h3>
+      <div class="border rounded" style="max-height:260px; overflow:auto;">
+        <table class="w-full text-sm">
+          <thead class="bg-green-700 text-white sticky top-0">
+            <tr>
+              <th class="p-2 text-left">Date/Time</th>
+              <th class="p-2 text-left">Route</th>
+              <th class="p-2 text-left">Fare</th>
+              <th class="p-2 text-left">RFID</th>
+            </tr>
+          </thead>
+          <tbody id="ridesTbody"></tbody>
+        </table>
+      </div>
+      <p class="text-xs text-gray-500 mt-2">
+        *History is based on your assigned RFID tag in Firestore (field <code>rfidTag</code>).
+      </p>
+    </section>
+  </main>
 
   <script type="module">
-    import { auth, db } from "./firebase-config.js";
+    import { auth, db, rtdb } from "./firebase-config.js";
     import {
-      createUserWithEmailAndPassword,
-      signInWithEmailAndPassword
+      onAuthStateChanged,
+      signOut
     } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
     import {
       doc,
-      setDoc,
       getDoc
     } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+    import {
+      ref,
+      onValue,
+      query,
+      orderByChild,
+      equalTo
+    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
-    const INITIAL_BALANCE = 100;
+    // ---------- GOOGLE MAPS ----------
+    let map, shuttleMarker;
 
-    // REGISTER
-    document.getElementById("registerBtn").onclick = async () => {
-      const fullName = fullname.value.trim();
-      const emailVal = email.value.trim();
-      const passVal  = password.value;
-      const roleVal  = role.value;
+    // called by Google Maps script
+    window.initMap = function () {
+      const uscTc = { lat: 10.3541, lng: 123.9114 }; // default
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: uscTc,
+        zoom: 15
+      });
+      shuttleMarker = new google.maps.Marker({
+        position: uscTc,
+        map,
+        title: "Shuttle",
+      });
 
-      if (!fullName || !emailVal || !passVal)
-        return alert("Please fill all fields.");
+      // subscribe to RTDB shuttle location
+      const shuttleRef = ref(rtdb, "shuttle/shuttle1");
+      onValue(shuttleRef, snap => {
+        const data = snap.val();
+        if (!data || data.lat === "" || data.lng === "") return; // no GPS yet
+        const pos = { lat: Number(data.lat), lng: Number(data.lng) };
+        shuttleMarker.setPosition(pos);
+        map.setCenter(pos);
+      });
+    };
 
-      try {
-        const cred = await createUserWithEmailAndPassword(auth, emailVal, passVal);
-        await setDoc(doc(db, "users", cred.user.uid), {
-          fullName,
-          email: emailVal,
-          role: roleVal,
-          balance: INITIAL_BALANCE,
-          rfidTag: ""     // you can manually fill this later in Firestore
+    // ---------- AUTH + FIRESTORE USER ----------
+    let currentRFID = null;
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) return location.href = "index.html";
+
+      const userRef = doc(db, "users", user.uid);
+      const snap = await getDoc(userRef);
+      if (!snap.exists()) {
+        alert("User profile missing in Firestore."); 
+        return;
+      }
+
+      const data = snap.data();
+      document.getElementById("balance").textContent = data.balance ?? 0;
+      currentRFID = (data.rfidTag || "").trim();
+
+      // load ride history if RFID is set
+      if (!currentRFID) {
+        document.getElementById("ridesTbody").innerHTML =
+          `<tr><td colspan="4" class="p-2 text-center text-xs text-gray-500">
+             No RFID tag assigned to your account yet.
+           </td></tr>`;
+      } else {
+        subscribeRideHistory(currentRFID);
+      }
+    });
+
+    document.getElementById("logoutBtn").onclick = () => signOut(auth);
+
+    // ---------- RIDE HISTORY FROM RTDB ----------
+    function subscribeRideHistory(rfidTag) {
+      const ridesRef = query(
+        ref(rtdb, "rides"),
+        orderByChild("uid"),
+        equalTo(rfidTag)
+      );
+
+      onValue(ridesRef, snap => {
+        const tbody = document.getElementById("ridesTbody");
+        tbody.innerHTML = "";
+
+        const items = [];
+        snap.forEach(child => {
+          const val = child.val();
+          items.push({
+            time: val.timestamp || 0,
+            displayTime: val.timestamp
+              ? new Date(val.timestamp).toLocaleString()
+              : "—",
+            route: val.route || "USC Talamban Loop",
+            fare: val.fare || 10,
+            uid: val.uid || ""
+          });
         });
-        alert(`Registered! Starting balance: ₱${INITIAL_BALANCE}. You can now login.`);
-      } catch (err) {
-        alert(err.message);
-      }
-    };
 
-    // LOGIN
-    document.getElementById("loginBtn").onclick = async () => {
-      const emailVal = email.value.trim();
-      const passVal  = password.value;
+        // sort newest first
+        items.sort((a,b) => b.time - a.time);
 
-      try {
-        const cred = await signInWithEmailAndPassword(auth, emailVal, passVal);
-        const userRef = doc(db, "users", cred.user.uid);
-        const snap = await getDoc(userRef);
+        if (!items.length) {
+          tbody.innerHTML =
+            `<tr><td colspan="4" class="p-2 text-center text-xs text-gray-500">
+               No rides found for this RFID yet.
+             </td></tr>`;
+          return;
+        }
 
-        if (!snap.exists()) return alert("User profile missing. Contact admin.");
-
-        const data = snap.data();
-        if (data.role === "admin") location.href = "admin.html";
-        else location.href = "campustap.html";
-      } catch (err) {
-        alert(err.message);
-      }
-    };
+        for (const r of items) {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td class="p-2">${r.displayTime}</td>
+            <td class="p-2">${r.route}</td>
+            <td class="p-2">₱${r.fare}</td>
+            <td class="p-2">${r.uid}</td>`;
+          tbody.appendChild(tr);
+        }
+      });
+    }
   </script>
 </body>
 </html>
