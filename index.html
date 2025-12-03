@@ -1,187 +1,94 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
+  <meta charset="utf-8" />
   <title>CampusTap — Login / Register</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <style>
-    .google-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      background: white;
-      border: 1px solid #ccc;
-      padding: 10px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 500;
-    }
-    .google-btn img {
-      width: 20px;
-    }
-  </style>
 </head>
-
 <body class="bg-green-700 min-h-screen flex items-center justify-center">
+  <div class="bg-white p-8 rounded shadow w-full max-w-md">
+    <h1 class="text-2xl font-bold text-green-700 mb-4">CampusTap</h1>
 
-  <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
-    <h1 class="text-2xl font-bold text-green-700 mb-4 text-center">CampusTap</h1>
-
-    <!-- FULL NAME -->
-    <label class="block text-sm font-medium">Full name</label>
+    <label class="block text-sm">Full name</label>
     <input id="fullname" class="w-full p-2 border rounded mb-3" placeholder="Juan Dela Cruz"/>
 
-    <!-- EMAIL -->
-    <label class="block text-sm font-medium">Email</label>
+    <label class="block text-sm">Email</label>
     <input id="email" type="email" class="w-full p-2 border rounded mb-3" placeholder="you@example.com"/>
 
-    <!-- PASSWORD -->
-    <label class="block text-sm font-medium">Password</label>
-    <input id="password" type="password" class="w-full p-2 border rounded mb-4" placeholder="••••••"/>
+    <label class="block text-sm">Password</label>
+    <input id="password" type="password" class="w-full p-2 border rounded mb-3" placeholder="••••••"/>
 
-    <!-- REGISTER BUTTON -->
-    <button id="registerBtn"
-            class="w-full bg-green-600 text-white py-2 rounded mb-2">
-      Register
-    </button>
+    <label class="block text-sm">Role</label>
+    <select id="role" class="w-full p-2 border rounded mb-4">
+      <option value="student">Student</option>
+      <option value="admin">Admin</option>
+    </select>
 
-    <!-- LOGIN BUTTON -->
-    <button id="loginBtn"
-            class="w-full bg-blue-600 text-white py-2 rounded">
-      Login
-    </button>
+    <button id="registerBtn" class="w-full bg-green-600 text-white py-2 rounded mb-2">Register</button>
+    <button id="loginBtn" class="w-full bg-blue-600 text-white py-2 rounded">Login</button>
 
-    <div class="my-4 text-center text-gray-500">OR</div>
-
-    <!-- GOOGLE LOGIN BUTTON -->
-    <button id="googleLoginBtn" class="google-btn w-full">
-      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg">
-      Continue with Google
-    </button>
-
-    <p class="mt-4 text-xs text-gray-600 text-center">
-      Admin accounts are auto-detected by USC admin emails.  
-      All others become students.
+    <p class="mt-4 text-xs text-gray-500">
+      New users get a starting balance of ₱100. Fare per ride: ₱10.
     </p>
   </div>
 
-  <!-- SCRIPT -->
   <script type="module">
     import { auth, db } from "./firebase-config.js";
-
     import {
       createUserWithEmailAndPassword,
-      signInWithEmailAndPassword,
-      GoogleAuthProvider,
-      signInWithPopup
+      signInWithEmailAndPassword
     } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-
     import {
-      doc, setDoc, getDoc
+      doc,
+      setDoc,
+      getDoc
     } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
     const INITIAL_BALANCE = 100;
 
-    const fullnameEl = document.getElementById("fullname");
-    const emailEl = document.getElementById("email");
-    const passEl = document.getElementById("password");
-
-    // ✔ Option C admin emails:
-    const adminList = [
-      "17100859@usc.edu.ph",
-      "alvin.cutamora@usc.edu.ph",
-      "julius.solomon@usc.edu.ph"
-    ];
-
-    function getRoleFromEmail(email) {
-      return adminList.includes(email.toLowerCase()) ? "admin" : "student";
-    }
-
-    /* ===========================================================
-       REGISTER ACCOUNT
-    ============================================================*/
+    // REGISTER
     document.getElementById("registerBtn").onclick = async () => {
-      const fullName = fullnameEl.value.trim();
-      const email = emailEl.value.trim();
-      const password = passEl.value;
+      const fullName = fullname.value.trim();
+      const emailVal = email.value.trim();
+      const passVal  = password.value;
+      const roleVal  = role.value;
 
-      if (!fullName || !email || !password)
+      if (!fullName || !emailVal || !passVal)
         return alert("Please fill all fields.");
 
-      const role = getRoleFromEmail(email);
-
       try {
-        const cred = await createUserWithEmailAndPassword(auth, email, password);
-
+        const cred = await createUserWithEmailAndPassword(auth, emailVal, passVal);
         await setDoc(doc(db, "users", cred.user.uid), {
           fullName,
-          email,
-          role,
-          balance: INITIAL_BALANCE
+          email: emailVal,
+          role: roleVal,
+          balance: INITIAL_BALANCE,
+          rfidTag: ""     // you can manually fill this later in Firestore
         });
-
-        alert(`Registered as ${role.toUpperCase()}! Starting balance ₱${INITIAL_BALANCE}.`);
+        alert(`Registered! Starting balance: ₱${INITIAL_BALANCE}. You can now login.`);
       } catch (err) {
         alert(err.message);
       }
     };
 
-    /* ===========================================================
-       EMAIL / PASSWORD LOGIN
-    ============================================================*/
+    // LOGIN
     document.getElementById("loginBtn").onclick = async () => {
-      const email = emailEl.value.trim();
-      const password = passEl.value;
+      const emailVal = email.value.trim();
+      const passVal  = password.value;
 
       try {
-        const cred = await signInWithEmailAndPassword(auth, email, password);
-        const snap = await getDoc(doc(db, "users", cred.user.uid));
+        const cred = await signInWithEmailAndPassword(auth, emailVal, passVal);
+        const userRef = doc(db, "users", cred.user.uid);
+        const snap = await getDoc(userRef);
 
-        if (!snap.exists()) return alert("User profile missing.");
+        if (!snap.exists()) return alert("User profile missing. Contact admin.");
 
-        const role = snap.data().role;
-
-        if (role === "admin") location.href = "admin.html";
+        const data = snap.data();
+        if (data.role === "admin") location.href = "admin.html";
         else location.href = "campustap.html";
-
       } catch (err) {
         alert(err.message);
-      }
-    };
-
-    /* ===========================================================
-       GOOGLE LOGIN
-    ============================================================*/
-    const googleProvider = new GoogleAuthProvider();
-
-    document.getElementById("googleLoginBtn").onclick = async () => {
-      try {
-        const result = await signInWithPopup(auth, googleProvider);
-        const user = result.user;
-
-        const ref = doc(db, "users", user.uid);
-        const snap = await getDoc(ref);
-
-        const role = getRoleFromEmail(user.email);
-
-        // First time Google login
-        if (!snap.exists()) {
-          await setDoc(ref, {
-            fullName: user.displayName || "Google User",
-            email: user.email,
-            role,
-            balance: INITIAL_BALANCE
-          });
-        }
-
-        if (role === "admin") location.href = "admin.html";
-        else location.href = "campustap.html";
-
-      } catch (err) {
-        alert("Google Login Error: " + err.message);
       }
     };
   </script>
