@@ -6,166 +6,145 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
+
 <body class="bg-green-700 min-h-screen text-gray-900">
-  <nav class="bg-white p-4 flex justify-between items-center shadow">
-    <div class="font-bold text-green-700">CampusTap — Admin</div>
-    <div class="space-x-4">
-      <a href="campustap.html" class="text-green-700">Student View</a>
-      <button id="logoutBtn" class="bg-red-600 text-white px-3 py-1 rounded">Logout</button>
-    </div>
-  </nav>
 
-  <main class="max-w-6xl mx-auto p-6 space-y-6">
-    <!-- Top-up Panel -->
-    <section class="bg-white p-4 rounded shadow">
-      <h2 class="text-lg font-semibold text-green-700 mb-3">Top-Up Balance</h2>
-      <div class="grid md:grid-cols-2 gap-4">
-        <div>
-          <label class="text-sm">Search user by email</label>
-          <input id="emailSearch" class="w-full border rounded px-3 py-2 mb-2" placeholder="student@usc.edu.ph" />
-          <button id="searchBtn" class="bg-blue-600 text-white px-4 py-2 rounded w-full md:w-auto">Search</button>
-        </div>
-        <div id="userCard" class="border rounded p-3 hidden">
-          <p><b>Name:</b> <span id="uName"></span></p>
-          <p><b>Email:</b> <span id="uEmail"></span></p>
-          <p><b>Current Balance:</b> ₱<span id="uBalance"></span></p>
-          <label class="text-sm mt-2 block">Amount to add</label>
-          <input id="topupAmount" type="number" class="w-full border rounded px-2 py-1 mb-2" placeholder="e.g. 50" />
-          <button id="topupBtn" class="bg-green-600 text-white px-4 py-2 rounded w-full md:w-auto">Top Up</button>
-        </div>
-      </div>
-    </section>
+<nav class="bg-white shadow p-4 flex justify-between">
+  <div class="font-bold text-green-700">CampusTap — Admin</div>
+  <button id="logoutBtn" class="bg-red-600 text-white px-3 py-1 rounded">Logout</button>
+</nav>
 
-    <!-- All Ride Logs -->
-    <section class="bg-white p-4 rounded shadow">
-      <h2 class="text-lg font-semibold text-green-700 mb-3">All Ride Logs (from RTDB)</h2>
-      <div class="border rounded" style="max-height:320px; overflow:auto;">
-        <table class="w-full text-sm">
-          <thead class="bg-green-700 text-white sticky top-0">
-            <tr>
-              <th class="p-2 text-left">Time</th>
-              <th class="p-2 text-left">RFID</th>
-              <th class="p-2 text-left">Route</th>
-              <th class="p-2 text-left">Fare</th>
-            </tr>
-          </thead>
-          <tbody id="adminRidesTbody"></tbody>
-        </table>
-      </div>
-    </section>
-  </main>
+<main class="max-w-6xl mx-auto p-6 space-y-6">
 
-  <script type="module">
-    import { auth, db, rtdb } from "./firebase-config.js";
-    import {
-      onAuthStateChanged,
-      signOut
-    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-    import {
-      collection,
-      query,
-      where,
-      getDocs,
-      doc,
-      updateDoc
-    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-    import {
-      ref,
-      onValue
-    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+<section class="bg-white p-4 rounded shadow">
+  <h2 class="text-green-700 font-semibold mb-3">Search User & Top Up</h2>
 
-    let currentUserId = null;
-    const userCard  = document.getElementById("userCard");
-    const uName     = document.getElementById("uName");
-    const uEmail    = document.getElementById("uEmail");
-    const uBalance  = document.getElementById("uBalance");
+  <input id="emailSearch" class="w-full border px-3 py-2 rounded mb-3" placeholder="Search by email">
 
-    onAuthStateChanged(auth, (user) => {
-      if (!user) location.href = "index.html";
-    });
+  <button id="searchBtn" class="bg-blue-600 text-white px-4 py-2 rounded">Search</button>
 
-    document.getElementById("logoutBtn").onclick = () => signOut(auth);
+  <div id="userCard" class="mt-4 p-4 border rounded hidden">
+    <p><b>Name:</b> <span id="uName"></span></p>
+    <p><b>Email:</b> <span id="uEmail"></span></p>
+    <p><b>Balance:</b> ₱<span id="uBalance"></span></p>
 
-    // ---- Search user by email (Firestore) ----
-    document.getElementById("searchBtn").onclick = async () => {
-      const emailSearch = document.getElementById("emailSearch").value.trim();
-      if (!emailSearch) return alert("Enter an email");
+    <label class="block mt-3">Amount to Add</label>
+    <input id="topupAmount" class="w-full border px-3 py-2 rounded mb-2" type="number">
+    <button id="topupBtn" class="bg-green-600 text-white px-4 py-2 rounded mb-3">Top Up</button>
 
-      const q = query(collection(db, "users"), where("email", "==", emailSearch));
-      const snap = await getDocs(q);
+    <label class="block">Assign RFID Tag</label>
+    <input id="rfidInput" class="w-full border px-3 py-2 rounded mb-2" placeholder="From ride logs">
+    <button id="saveRfidBtn" class="bg-purple-600 text-white px-4 py-2 rounded">Save RFID</button>
+  </div>
+</section>
 
-      if (snap.empty) {
-        alert("No user found with that email.");
-        userCard.classList.add("hidden");
-        return;
-      }
+<section class="bg-white p-4 rounded shadow">
+  <h2 class="text-green-700 font-semibold mb-3">Ride Logs</h2>
 
-      const docSnap = snap.docs[0];
-      currentUserId = docSnap.id;
-      const data = docSnap.data();
+  <div class="border rounded" style="max-height:300px; overflow:auto;">
+    <table class="w-full text-sm">
+      <thead class="bg-green-700 text-white sticky top-0">
+        <tr>
+          <th class="p-2 text-left">Date</th>
+          <th class="p-2 text-left">RFID</th>
+          <th class="p-2 text-left">Route</th>
+          <th class="p-2 text-left">Fare</th>
+        </tr>
+      </thead>
+      <tbody id="adminRidesTbody"></tbody>
+    </table>
+  </div>
+</section>
 
-      uName.textContent    = data.fullName || "";
-      uEmail.textContent   = data.email || "";
-      uBalance.textContent = data.balance ?? 0;
+</main>
 
-      userCard.classList.remove("hidden");
-    };
+<script type="module">
+import { auth, db, rtdb } from "./firebase-config.js";
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { collection, query, where, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
-    // ---- Top Up button ----
-    document.getElementById("topupBtn").onclick = async () => {
-      if (!currentUserId) return alert("Search a user first.");
-      const amt = Number(document.getElementById("topupAmount").value);
-      if (!amt || amt <= 0) return alert("Enter a valid amount.");
+let currentUserId = null;
 
-      const userRef = doc(db, "users", currentUserId);
-      // Get current balance:
-      const q = query(collection(db, "users"), where("__name__", "==", currentUserId));
-      const snap = await getDocs(q);
-      const data = snap.docs[0].data();
-      const newBalance = (data.balance || 0) + amt;
+onAuthStateChanged(auth, user => {
+  if (!user) location.href = "index.html";
+});
 
-      await updateDoc(userRef, { balance: newBalance });
-      uBalance.textContent = newBalance;
-      document.getElementById("topupAmount").value = "";
-      alert("Top-up successful!");
-    };
+logoutBtn.onclick = () => signOut(auth);
 
-    // ---- All ride logs from RTDB ----
-    const ridesRef = ref(rtdb, "rides");
-    onValue(ridesRef, (snap) => {
-      const tbody = document.getElementById("adminRidesTbody");
-      tbody.innerHTML = "";
-      const list = [];
-      snap.forEach(child => {
-        const v = child.val();
-        list.push({
-          time: v.timestamp || 0,
-          displayTime: v.timestamp ? new Date(v.timestamp).toLocaleString() : "—",
-          uid: v.uid || "",
-          route: v.route || "USC Talamban Loop",
-          fare: v.fare || 10
-        });
-      });
+// SEARCH USER
+searchBtn.onclick = async () => {
+  const email = emailSearch.value.trim();
+  const q = query(collection(db, "users"), where("email", "==", email));
+  const snap = await getDocs(q);
 
-      list.sort((a,b)=>b.time-a.time);
+  if (snap.empty) return alert("User not found.");
 
-      for (const r of list) {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td class="p-2">${r.displayTime}</td>
-          <td class="p-2">${r.uid}</td>
-          <td class="p-2">${r.route}</td>
-          <td class="p-2">₱${r.fare}</td>`;
-        tbody.appendChild(tr);
-      }
+  const userDoc = snap.docs[0];
+  const data = userDoc.data();
 
-      if (!list.length) {
-        tbody.innerHTML =
-          `<tr><td colspan="4" class="p-2 text-center text-xs text-gray-500">
-             No rides logged yet.
-           </td></tr>`;
-      }
-    });
-  </script>
+  currentUserId = userDoc.id;
+  uName.textContent = data.fullName;
+  uEmail.textContent = data.email;
+  uBalance.textContent = data.balance;
+
+  userCard.classList.remove("hidden");
+};
+
+// TOP UP
+topupBtn.onclick = async () => {
+  if (!currentUserId) return alert("Search first.");
+
+  const amount = Number(topupAmount.value);
+  if (!amount || amount <= 0) return alert("Enter valid amount.");
+
+  const userRef = doc(db, "users", currentUserId);
+  const snap = await getDocs(query(collection(db, "users"), where("__name__", "==", currentUserId)));
+  const data = snap.docs[0].data();
+
+  const newBal = (data.balance || 0) + amount;
+
+  await updateDoc(userRef, { balance: newBal });
+  uBalance.textContent = newBal;
+
+  alert("Balance updated.");
+};
+
+// SAVE RFID
+saveRfidBtn.onclick = async () => {
+  if (!currentUserId) return alert("Search first.");
+  const rfid = rfidInput.value.trim();
+  if (!rfid) return alert("Enter RFID");
+
+  await updateDoc(doc(db, "users", currentUserId), { rfidTag: rfid });
+
+  alert("RFID saved.");
+};
+
+// LOAD ALL RIDE LOGS
+const ridesRef = ref(rtdb, "rides");
+onValue(ridesRef, snap => {
+  const tbody = document.getElementById("adminRidesTbody");
+  tbody.innerHTML = "";
+
+  const list = [];
+
+  snap.forEach(child => list.push(child.val()));
+
+  list.sort((a,b)=>b.timestamp - a.timestamp);
+
+  for (const r of list) {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td class="p-2">${new Date(r.timestamp).toLocaleString()}</td>
+      <td class="p-2">${r.uid}</td>
+      <td class="p-2">${r.route}</td>
+      <td class="p-2">₱${r.fare}</td>
+    `;
+    tbody.appendChild(row);
+  }
+});
+</script>
+
 </body>
 </html>
