@@ -16,9 +16,9 @@ const firebaseConfig = {
   databaseURL: "https://campustap2-default-rtdb.asia-southeast1.firebasedatabase.app"
 };
 
-const app   = initializeApp(firebaseConfig);
-const auth  = getAuth(app);
-const db    = getFirestore(app);     // Firestore
-const rtdb  = getDatabase(app);      // Realtime Database
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const rtdb = getDatabase(app);
 
 export { app, auth, db, rtdb };
