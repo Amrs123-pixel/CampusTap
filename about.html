@@ -1,88 +1,36 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>About — CampusTap</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- Tailwind CSS (optional, since your site uses it) -->
+  <meta charset="UTF-8" />
+  <title>About CampusTap</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <style>
-    .about-container {
-      max-width: 900px;
-      margin: 40px auto;
-      padding: 30px;
-      background: #ffffff;
-      border-radius: 15px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.08);
-      animation: fadeIn 0.8s ease;
-    }
-
-    .about-container h2 {
-      font-size: 32px;
-      margin-bottom: 15px;
-      color: #1a73e8;
-      text-align: center;
-      letter-spacing: 1px;
-    }
-
-    .about-container p {
-      font-size: 17px;
-      line-height: 1.8;
-      margin-bottom: 20px;
-      color: #333;
-      text-align: justify;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-  </style>
-
 </head>
-<body class="bg-gray-100">
 
-  <!-- Navigation (optional) -->
-  <nav class="bg-green-700 text-white p-4">
-    <div class="max-w-6xl mx-auto flex justify-between">
-      <h1 class="text-xl font-bold">CampusTap</h1>
-      <a href="index.html" class="underline hover:text-gray-300">Back to Login</a>
-    </div>
-  </nav>
+<body class="bg-green-700 min-h-screen text-gray-900">
+<nav class="bg-white shadow p-4">
+  <a href="index.html" class="text-green-700 font-bold">Back to Login</a>
+</nav>
 
-  <div class="about-container">
+<main class="max-w-3xl mx-auto p-6 bg-white rounded shadow mt-6">
+  <h1 class="text-2xl text-green-700 font-bold">About CampusTap</h1>
 
-    <h2>About CampusTap</h2>
+  <p class="mt-4">
+    CampusTap is an innovative project reimagining campus mobility through technology.
+    Created as a thesis project by students from the University of San Carlos, it provides
+    a cashless, real-time shuttle tracking and ride logging system.
+  </p>
 
-    <p>
-      <strong>CampusTap</strong> is a thesis capstone project designed to modernize school
-      transportation through a fully digital tap-to-ride system. It integrates RFID
-      identification, real-time GPS tracking, and cloud-based account management to create
-      a safer, faster, and more efficient commuting experience for students. Each tap
-      automatically updates the student’s ride record and balance, eliminating the need for
-      manual fare collection.
-    </p>
+  <h2 class="mt-4 font-bold text-green-700">Our Mission</h2>
+  <p>To improve student transportation with real-time tracking and cashless convenience.</p>
 
-    <p>
-      The system combines <strong>Arduino-powered RFID hardware</strong> with a
-      <strong>Firebase backend</strong> that handles authentication, user data, balance
-      management, and ride tracking. The web application is built using HTML, CSS, and
-      JavaScript, providing students with a clean and responsive interface for checking
-      their balance, viewing their ride history, and monitoring real-time bus locations.
-      Administrators can manage accounts, top up balances, and monitor system activity.
-    </p>
-
-    <p>
-      This project demonstrates the practical application of embedded systems, wireless
-      communication, and cloud technologies in creating a reliable and scalable
-      transportation solution. CampusTap aims to improve transparency, convenience, and
-      safety while introducing an innovative cashless transportation method for academic
-      institutions.
-    </p>
-
-  </div>
+  <h2 class="mt-4 font-bold text-green-700">Meet the Team</h2>
+  <ul class="list-disc ml-6">
+    <li><b>David Aram Castillo</b> — Product Owner</li>
+    <li><b>Alvin John Cutamora</b> — Scrum Master</li>
+    <li><b>Julius Solomon Jr.</b> — Developer</li>
+  </ul>
+</main>
 
 </body>
 </html>
