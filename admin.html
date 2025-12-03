@@ -1,52 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>CampusTap Admin Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body class="bg-green-700 min-h-screen text-gray-900">
-  <!-- NAVBAR -->
-  <nav class="bg-white shadow p-4 flex justify-between">
-    <h1 class="text-xl font-bold text-green-700">📊 CampusTap Admin</h1>
+
+  <!-- NAV -->
+  <nav class="bg-white shadow p-4 flex justify-between items-center">
+    <h1 class="text-xl font-bold text-green-700">CampusTap Admin</h1>
     <a href="campustap.html" class="text-green-700 font-semibold">Back to Map</a>
   </nav>
 
   <main class="max-w-6xl mx-auto p-6 space-y-6">
 
-    <!-- ============================= -->
-    <!--   TOP ANALYTICS CHARTS        -->
-    <!-- ============================= -->
+
+    <!-- 📊 CHARTS SECTION -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
       <!-- Total Rides -->
-      <div class="bg-white p-4 rounded-lg shadow">
-        <h2 class="text-lg font-semibold text-green-700">Total Rides</h2>
+      <div class="bg-white p-4 rounded shadow">
+        <h2 class="font-bold text-green-700 mb-2">Total Rides</h2>
         <canvas id="ridesChart"></canvas>
       </div>
 
-      <!-- Revenue -->
-      <div class="bg-white p-4 rounded-lg shadow">
-        <h2 class="text-lg font-semibold text-green-700">Total Revenue</h2>
+      <!-- Total Revenue -->
+      <div class="bg-white p-4 rounded shadow">
+        <h2 class="font-bold text-green-700 mb-2">Revenue</h2>
         <canvas id="revenueChart"></canvas>
       </div>
 
-      <!-- Active Shuttle -->
-      <div class="bg-white p-4 rounded-lg shadow">
-        <h2 class="text-lg font-semibold text-green-700">Active Shuttle</h2>
+      <!-- Active Shuttles -->
+      <div class="bg-white p-4 rounded shadow">
+        <h2 class="font-bold text-green-700 mb-2">Active Shuttle(s)</h2>
         <canvas id="shuttleChart"></canvas>
       </div>
 
     </div>
 
-    <!-- ============================= -->
-    <!--   MANAGE ACCOUNTS             -->
-    <!-- ============================= -->
-    <div class="bg-white p-5 rounded-lg shadow">
-      <h2 class="text-lg font-semibold text-green-700 mb-3">👥 Manage Student Accounts</h2>
+
+    <!-- 📅 DAILY ANALYTICS -->
+    <div class="bg-white p-4 rounded shadow">
+      <h2 class="font-bold text-green-700 mb-2">Daily Rides (7 Days)</h2>
+      <canvas id="dailyChart"></canvas>
+    </div>
+
+    <!-- 📈 WEEKLY ANALYTICS -->
+    <div class="bg-white p-4 rounded shadow">
+      <h2 class="font-bold text-green-700 mb-2">Weekly Rides (8 Weeks)</h2>
+      <canvas id="weeklyChart"></canvas>
+    </div>
+
+
+    <!-- Manage Student Accounts -->
+    <div class="bg-white p-4 rounded shadow">
+      <h2 class="text-lg font-bold text-green-700 mb-4">👥 Manage Student Accounts</h2>
       <table class="w-full border">
         <thead>
           <tr class="bg-green-700 text-white">
@@ -60,11 +72,10 @@
       </table>
     </div>
 
-    <!-- ============================= -->
-    <!--   RECENT TOP-UPS              -->
-    <!-- ============================= -->
-    <div class="bg-white p-5 rounded-lg shadow">
-      <h2 class="text-lg font-semibold text-green-700 mb-3">💵 Recent Top-Ups</h2>
+
+    <!-- Recent Top-Ups -->
+    <div class="bg-white p-4 rounded shadow">
+      <h2 class="text-lg font-bold text-green-700 mb-4">💰 Recent Top-Ups</h2>
       <table class="w-full border">
         <thead>
           <tr class="bg-green-700 text-white">
@@ -79,157 +90,193 @@
 
   </main>
 
-  <!-- ================= FIREBASE LOGIC ================= -->
+
+  <!-- FIREBASE -->
   <script type="module">
     import { auth, db } from "./firebase-config.js";
-    import { 
-      getDocs, collection, doc, getDoc, updateDoc, addDoc, query, orderBy 
+    import {
+      collection, doc, getDocs, updateDoc, addDoc,
+      query, orderBy, onSnapshot
     } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+
+    let students = [];
+    let rides = [];
+    let recentTopups = [];
 
     onAuthStateChanged(auth, async (user) => {
       if (!user) return location.href = "index.html";
 
-      const snap = await getDoc(doc(db, "users", user.uid));
-      if (!snap.exists() || snap.data().role !== "admin") {
-        alert("Access denied: Admin only.");
-        return location.href = "campustap.html";
-      }
-
       loadStudents();
+      loadRides();
       loadTopUps();
-      loadAnalytics();
     });
 
-    /* ---------------- Load Students ---------------- */
+    /* -------------------------
+       LOAD STUDENTS
+    ------------------------- */
     async function loadStudents() {
-      const table = document.getElementById("studentTable");
-      table.innerHTML = "";
+      const snap = await getDocs(collection(db, "users"));
+      students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      const q = await getDocs(collection(db, "users"));
-      q.forEach(docu => {
-        const u = docu.data();
-        if (u.role !== "student") return;
+      const tbody = document.getElementById("studentTable");
+      tbody.innerHTML = "";
 
-        table.innerHTML += `
+      students.forEach(s => {
+        tbody.innerHTML += `
           <tr class="border-b">
-            <td class="p-2">${u.fullName}</td>
-            <td class="p-2">${u.email}</td>
-            <td class="p-2">₱${u.balance}</td>
+            <td class="p-2">${s.fullName}</td>
+            <td class="p-2">${s.email}</td>
+            <td class="p-2">₱${s.balance}</td>
             <td class="p-2">
-              <button class="bg-green-600 text-white px-3 py-1 rounded" onclick="topUp('${docu.id}', '${u.fullName}')">
-                Top-Up
-              </button>
+              <button onclick="topUp('${s.id}', '${s.fullName}')"
+                class="bg-green-600 text-white px-3 py-1 rounded">Top-Up</button>
             </td>
           </tr>
         `;
       });
     }
 
-    /* ---------------- Top-Up System ---------------- */
     window.topUp = async function(uid, name) {
-      let amount = prompt("Enter amount to add:");
-      if (!amount) return;
-      amount = parseInt(amount);
+      let amount = prompt("Enter amount to top-up:");
+      amount = Number(amount);
+
+      if (!amount || amount <= 0) return alert("Invalid amount.");
 
       const userRef = doc(db, "users", uid);
-      const snap = await getDoc(userRef);
-      const current = snap.data().balance;
+      const userSnap = await getDocs(collection(db, "users"));
+      const userData = students.find(s => s.id === uid);
 
-      await updateDoc(userRef, { balance: current + amount });
+      await updateDoc(userRef, { balance: userData.balance + amount });
 
-      // save topup log
       await addDoc(collection(db, "topups"), {
         uid,
         name,
         amount,
-        time: new Date().toLocaleString()
+        time: Date.now()
       });
 
       loadStudents();
-      loadTopUps();
-      loadAnalytics();
     };
 
-    /* ---------------- Load Top-Ups ---------------- */
+
+    /* -------------------------
+       LOAD TOP-UPS
+    ------------------------- */
     async function loadTopUps() {
-      const table = document.getElementById("topupTable");
-      table.innerHTML = "";
+      const q = query(collection(db, "topups"), orderBy("time", "desc"));
+      onSnapshot(q, snap => {
+        const tbody = document.getElementById("topupTable");
+        tbody.innerHTML = "";
 
-      const q = await getDocs(query(collection(db, "topups"), orderBy("time", "desc")));
+        snap.forEach(d => {
+          const t = d.data();
+          const date = new Date(t.time).toLocaleString();
 
-      q.forEach(t => {
-        const d = t.data();
-        table.innerHTML += `
-          <tr class="border-b">
-            <td class="p-2">${d.name}</td>
-            <td class="p-2">₱${d.amount}</td>
-            <td class="p-2">${d.time}</td>
-          </tr>
-        `;
+          tbody.innerHTML += `
+            <tr class="border-b">
+              <td class="p-2">${t.name}</td>
+              <td class="p-2">₱${t.amount}</td>
+              <td class="p-2">${date}</td>
+            </tr>
+          `;
+        });
       });
     }
 
-    /* ---------------- Analytics (Charts) ---------------- */
-    async function loadAnalytics() {
-      // get all rides
-      const rideSnap = await getDocs(collection(db, "rides"));
-      let rideCount = 0;
-      rideSnap.forEach(() => rideCount++);
 
-      // revenue
-      const revenue = rideCount * 10;
+    /* -------------------------
+       LOAD RIDES
+    ------------------------- */
+    async function loadRides() {
+      const snap = await getDocs(collection(db, "rides"));
+      rides = snap.docs.map(d => d.data());
 
-      // shuttle status
-      const locSnap = await getDoc(doc(db, "shuttle", "shuttle1"));
-      let active = 0;
-      let inactive = 1;
+      drawCharts();
+    }
 
-      if (locSnap.exists()) {
-        const last = locSnap.data().timestamp;
-        const now = Date.now();
 
-        if (now - last < 30000) active = 1;
-        else inactive = 1;
-      }
+    /* -------------------------
+       CHARTS
+    ------------------------- */
+    function drawCharts() {
+      const totalRides = rides.length;
+      const revenue = totalRides * 10;
+      const activeShuttles = 1;
 
-      /* Draw Total Rides Chart */
       new Chart(document.getElementById("ridesChart"), {
         type: "bar",
         data: {
-          labels: ["Rides"],
+          labels: ["Total Rides"],
+          datasets: [{ data: [totalRides], backgroundColor: "#22c55e" }]
+        }
+      });
+
+      new Chart(document.getElementById("revenueChart"), {
+        type: "doughnut",
+        data: {
+          labels: ["Revenue"],
+          datasets: [{ data: [revenue], backgroundColor: ["#16a34a"] }]
+        }
+      });
+
+      new Chart(document.getElementById("shuttleChart"), {
+        type: "pie",
+        data: {
+          labels: ["Active Shuttle"],
+          datasets: [{ data: [activeShuttles], backgroundColor: ["#4ade80"] }]
+        }
+      });
+
+
+      /* DAILY ANALYTICS */
+      let daily = {};
+      for (let i = 0; i < 7; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().slice(0, 10);
+        daily[key] = 0;
+      }
+
+      rides.forEach(r => {
+        if (daily[r.date]) daily[r.date]++;
+      });
+
+      new Chart(document.getElementById("dailyChart"), {
+        type: "line",
+        data: {
+          labels: Object.keys(daily),
           datasets: [{
-            label: "Number of Rides",
-            data: [rideCount],
+            label: "Rides",
+            data: Object.values(daily),
+            borderColor: "#15803d"
+          }]
+        }
+      });
+
+
+      /* WEEKLY ANALYTICS */
+      let weekly = Array(8).fill(0);
+      const now = new Date();
+
+      rides.forEach(r => {
+        const d = new Date(r.timestamp);
+        const week = Math.floor((now - d) / (7 * 86400000));
+        if (week < 8) weekly[week]++;
+      });
+
+      new Chart(document.getElementById("weeklyChart"), {
+        type: "bar",
+        data: {
+          labels: ["This Week", "1W", "2W", "3W", "4W", "5W", "6W", "7W"],
+          datasets: [{
+            label: "Rides",
+            data: weekly,
             backgroundColor: "#16a34a"
           }]
         }
       });
 
-      /* Revenue Chart */
-      new Chart(document.getElementById("revenueChart"), {
-        type: "doughnut",
-        data: {
-          labels: ["Revenue"],
-          datasets: [{
-            data: [revenue],
-            backgroundColor: ["#22c55e"]
-          }]
-        }
-      });
-
-      /* Shuttle Chart */
-      new Chart(document.getElementById("shuttleChart"), {
-        type: "pie",
-        data: {
-          labels: ["Active", "Inactive"],
-          datasets: [{
-            data: [active, inactive],
-            backgroundColor: ["#16a34a", "#86efac"]
-          }]
-        }
-      });
     }
   </script>
 
