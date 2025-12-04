@@ -1,117 +1,47 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>CampusTap — Admin Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <title>Admin Panel</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body class="bg-green-700 min-h-screen">
 
-  <nav class="bg-white shadow p-4 flex justify-between items-center">
-    <h1 class="text-xl font-bold text-green-700">📊 CampusTap Admin</h1>
-    <div class="space-x-4">
-      <a href="campustap.html" class="text-green-700 font-semibold">Back to Map</a>
-      <button id="logoutBtn" class="bg-red-600 text-white px-4 py-1 rounded">Logout</button>
+  <nav class="bg-white p-4 flex justify-between">
+    <h1 class="text-xl font-bold text-green-700">CampusTap (Admin)</h1>
+    <div class="space-x-3">
+      <a href="campustap.html">Map</a>
+      <a href="account.html">Account</a>
+      <a href="admin.html">Admin</a>
+      <button id="logoutBtn" class="text-red-600">Logout</button>
     </div>
   </nav>
 
-  <main class="max-w-6xl mx-auto p-4 space-y-4">
+  <div class="max-w-3xl mx-auto mt-5 bg-white p-5 rounded-xl shadow">
+    <h2 class="text-xl font-bold text-green-600 mb-3">All Users</h2>
 
-    <!-- Summary Cards -->
-    <section class="grid md:grid-cols-3 gap-4">
-      <div class="bg-white rounded-xl shadow p-4">
-        <div class="text-xs text-gray-500">Total Rides</div>
-        <div id="totalRides" class="text-2xl font-bold text-green-700">0</div>
-      </div>
-      <div class="bg-white rounded-xl shadow p-4">
-        <div class="text-xs text-gray-500">Total Revenue</div>
-        <div id="totalRevenue" class="text-2xl font-bold text-green-700">₱0</div>
-      </div>
-      <div class="bg-white rounded-xl shadow p-4">
-        <div class="text-xs text-gray-500">Active Students (≥1 ride)</div>
-        <div id="activeStudents" class="text-2xl font-bold text-green-700">0</div>
-      </div>
-    </section>
-
-    <!-- Charts -->
-    <section class="grid md:grid-cols-2 gap-4">
-      <div class="bg-white rounded-xl shadow p-4">
-        <h3 class="font-semibold text-green-700 mb-2 text-sm">Rides per Day</h3>
-        <canvas id="ridesChart"></canvas>
-      </div>
-      <div class="bg-white rounded-xl shadow p-4">
-        <h3 class="font-semibold text-green-700 mb-2 text-sm">Revenue per Day</h3>
-        <canvas id="revenueChart"></canvas>
-      </div>
-    </section>
-
-    <!-- Student Accounts -->
-    <section class="bg-white rounded-xl shadow p-4">
-      <h3 class="font-semibold text-green-700 mb-3 text-sm">Manage Student Accounts</h3>
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead class="bg-green-700 text-white">
-            <tr>
-              <th class="p-2 text-left">Name</th>
-              <th class="p-2 text-left">Email</th>
-              <th class="p-2 text-left">Balance</th>
-              <th class="p-2 text-left">Action</th>
-            </tr>
-          </thead>
-          <tbody id="studentsBody"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Recent Top-Ups -->
-    <section class="bg-white rounded-xl shadow p-4">
-      <h3 class="font-semibold text-green-700 mb-3 text-sm">Recent Top-Ups</h3>
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead class="bg-green-700 text-white">
-            <tr>
-              <th class="p-2 text-left">Student</th>
-              <th class="p-2 text-left">Amount</th>
-              <th class="p-2 text-left">Time</th>
-            </tr>
-          </thead>
-          <tbody id="topupsBody"></tbody>
-        </table>
-      </div>
-    </section>
-  </main>
+    <table class="w-full">
+      <thead>
+        <tr class="bg-green-100">
+          <th>Name</th>
+          <th>Email</th>
+          <th>Balance</th>
+          <th>Role</th>
+        </tr>
+      </thead>
+      <tbody id="usersTable"></tbody>
+    </table>
+  </div>
 
   <script type="module">
     import { auth, db } from "./firebase-config.js";
-    import {
-      onAuthStateChanged,
-      signOut
-    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-    import {
-      collection,
-      doc,
-      getDoc,
-      getDocs,
-      query,
-      orderBy,
-      limit,
-      updateDoc,
-      addDoc
-    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+    import { onAuthStateChanged, signOut } 
+      from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { collection, getDocs } 
+      from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-    const logoutBtn = document.getElementById("logoutBtn");
-    logoutBtn.onclick = () => signOut(auth);
-
-    const studentsBody = document.getElementById("studentsBody");
-    const topupsBody = document.getElementById("topupsBody");
-    const totalRidesEl = document.getElementById("totalRides");
-    const totalRevenueEl = document.getElementById("totalRevenue");
-    const activeStudentsEl = document.getElementById("activeStudents");
-
-    let ridesChart, revenueChart;
-    let currentAdmin = null;
+    const table = document.getElementById("usersTable");
 
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
@@ -119,149 +49,23 @@
         return;
       }
 
-      const userRef = doc(db, "users", user.uid);
-      const snap = await getDoc(userRef);
-      if (!snap.exists() || snap.data().role !== "admin") {
-        // Not admin → redirect back
-        location.href = "campustap.html";
-        return;
-      }
-      currentAdmin = snap.data();
+      const snapshot = await getDocs(collection(db, "users"));
 
-      await loadStudents();
-      await loadTopups();
-      await loadRideStats();
+      snapshot.forEach((d) => {
+        const x = d.data();
+        table.innerHTML += `
+          <tr>
+            <td>${x.name}</td>
+            <td>${x.email}</td>
+            <td>₱${x.balance}</td>
+            <td>${x.role}</td>
+          </tr>
+        `;
+      });
     });
 
-    async function loadStudents() {
-      const usersRef = collection(db, "users");
-      const qs = await getDocs(usersRef);
-      studentsBody.innerHTML = "";
-      qs.forEach((docSnap) => {
-        const u = docSnap.data();
-        const id = docSnap.id;
-        const row = document.createElement("tr");
-        row.className = "border-b";
-        row.innerHTML = `
-          <td class="p-2">${u.fullName || ""}</td>
-          <td class="p-2">${u.email || ""}</td>
-          <td class="p-2">₱${u.balance ?? 0}</td>
-          <td class="p-2">
-            <button data-id="${id}" data-name="${u.fullName || u.email}" class="topupBtn bg-green-600 text-white px-3 py-1 rounded text-xs">
-              Top-up
-            </button>
-          </td>`;
-        studentsBody.appendChild(row);
-      });
-
-      document.querySelectorAll(".topupBtn").forEach(btn => {
-        btn.addEventListener("click", async () => {
-          const userId = btn.getAttribute("data-id");
-          const name = btn.getAttribute("data-name");
-          const amountStr = prompt(`Top-up amount for ${name} (₱):`, "50");
-          if (!amountStr) return;
-          const amount = parseInt(amountStr, 10);
-          if (isNaN(amount) || amount <= 0) {
-            alert("Invalid amount.");
-            return;
-          }
-          await applyTopup(userId, amount, name);
-          await loadStudents();
-          await loadTopups();
-        });
-      });
-    }
-
-    async function applyTopup(userId, amount, name) {
-      const uRef = doc(db, "users", userId);
-      const snap = await getDoc(uRef);
-      if (!snap.exists()) return;
-      const bal = snap.data().balance ?? 0;
-      await updateDoc(uRef, { balance: bal + amount });
-
-      const topupsRef = collection(db, "topups");
-      await addDoc(topupsRef, {
-        userId,
-        studentName: name,
-        amount,
-        adminEmail: currentAdmin.email,
-        timestamp: Date.now()
-      });
-    }
-
-    async function loadTopups() {
-      const topupsRef = collection(db, "topups");
-      const q = query(topupsRef, orderBy("timestamp", "desc"), limit(10));
-      const qs = await getDocs(q);
-      topupsBody.innerHTML = "";
-      qs.forEach((docSnap) => {
-        const t = docSnap.data();
-        const date = new Date(t.timestamp).toLocaleString();
-        topupsBody.innerHTML += `
-          <tr class="border-b">
-            <td class="p-2">${t.studentName || ""}</td>
-            <td class="p-2">₱${t.amount}</td>
-            <td class="p-2">${date}</td>
-          </tr>`;
-      });
-    }
-
-    async function loadRideStats() {
-      const ridesRef = collection(db, "rides");
-      const qs = await getDocs(ridesRef);
-
-      const perDayCounts = {};
-      const perDayRevenue = {};
-      const activeSet = new Set();
-
-      let totalRides = 0;
-      qs.forEach((docSnap) => {
-        const r = docSnap.data();
-        if (!r.timestamp) return;
-        totalRides++;
-        const d = new Date(r.timestamp);
-        const key = d.toISOString().slice(0, 10);
-        perDayCounts[key] = (perDayCounts[key] || 0) + 1;
-        perDayRevenue[key] = (perDayRevenue[key] || 0) + (r.fare ?? 10);
-        if (r.userId) activeSet.add(r.userId);
-      });
-
-      const labels = Object.keys(perDayCounts).sort();
-      const rideData = labels.map(k => perDayCounts[k]);
-      const revenueData = labels.map(k => perDayRevenue[k] || 0);
-      const totalRevenue = revenueData.reduce((a, b) => a + b, 0);
-
-      totalRidesEl.textContent = totalRides;
-      totalRevenueEl.textContent = "₱" + totalRevenue;
-      activeStudentsEl.textContent = activeSet.size;
-
-      if (ridesChart) ridesChart.destroy();
-      if (revenueChart) revenueChart.destroy();
-
-      const ctx1 = document.getElementById("ridesChart").getContext("2d");
-      ridesChart = new Chart(ctx1, {
-        type: "bar",
-        data: {
-          labels,
-          datasets: [{
-            label: "Rides",
-            data: rideData
-          }]
-        }
-      });
-
-      const ctx2 = document.getElementById("revenueChart").getContext("2d");
-      revenueChart = new Chart(ctx2, {
-        type: "line",
-        data: {
-          labels,
-          datasets: [{
-            label: "Revenue (₱)",
-            data: revenueData
-          }]
-        }
-      });
-    }
+    logoutBtn.onclick = () => signOut(auth);
   </script>
+
 </body>
 </html>
