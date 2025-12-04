@@ -1,5 +1,5 @@
 // firebase-config.js
-// Paste your own config from Firebase Console → Project settings → General
+// Use your NEW project config here (NOT the old one).
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
@@ -7,14 +7,13 @@ import { getFirestore } from "https://www.gstatic.com/firebasejs/10.13.0/firebas
 import { getDatabase } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA6OmfsgRx-D6dN2Mto5Btczi8A64ReQJg",
-  authDomain: "campustap-522d8.firebaseapp.com",
-  databaseURL: "https://campustap-522d8-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "campustap-522d8",
-  storageBucket: "campustap-522d8.firebasestorage.app",
-  messagingSenderId: "929159058918",
-  appId: "1:929159058918:web:2378bbb19f873e98dcb227"
-  databaseURL: "https://campustap-522d8-default-rtdb.asia-southeast1.firebasedatabase.app"
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID",
+  databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.asia-southeast1.firebasedatabase.app"
 };
 
 const app = initializeApp(firebaseConfig);
