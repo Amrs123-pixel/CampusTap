@@ -1,150 +1,267 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="UTF-8" />
   <title>CampusTap — Admin Dashboard</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+<body class="bg-green-700 min-h-screen">
 
-<body class="bg-green-700 min-h-screen text-gray-900">
+  <nav class="bg-white shadow p-4 flex justify-between items-center">
+    <h1 class="text-xl font-bold text-green-700">📊 CampusTap Admin</h1>
+    <div class="space-x-4">
+      <a href="campustap.html" class="text-green-700 font-semibold">Back to Map</a>
+      <button id="logoutBtn" class="bg-red-600 text-white px-4 py-1 rounded">Logout</button>
+    </div>
+  </nav>
 
-<nav class="bg-white shadow p-4 flex justify-between">
-  <div class="font-bold text-green-700">CampusTap — Admin</div>
-  <button id="logoutBtn" class="bg-red-600 text-white px-3 py-1 rounded">Logout</button>
-</nav>
+  <main class="max-w-6xl mx-auto p-4 space-y-4">
 
-<main class="max-w-6xl mx-auto p-6 space-y-6">
+    <!-- Summary Cards -->
+    <section class="grid md:grid-cols-3 gap-4">
+      <div class="bg-white rounded-xl shadow p-4">
+        <div class="text-xs text-gray-500">Total Rides</div>
+        <div id="totalRides" class="text-2xl font-bold text-green-700">0</div>
+      </div>
+      <div class="bg-white rounded-xl shadow p-4">
+        <div class="text-xs text-gray-500">Total Revenue</div>
+        <div id="totalRevenue" class="text-2xl font-bold text-green-700">₱0</div>
+      </div>
+      <div class="bg-white rounded-xl shadow p-4">
+        <div class="text-xs text-gray-500">Active Students (≥1 ride)</div>
+        <div id="activeStudents" class="text-2xl font-bold text-green-700">0</div>
+      </div>
+    </section>
 
-<section class="bg-white p-4 rounded shadow">
-  <h2 class="text-green-700 font-semibold mb-3">Search User & Top Up</h2>
+    <!-- Charts -->
+    <section class="grid md:grid-cols-2 gap-4">
+      <div class="bg-white rounded-xl shadow p-4">
+        <h3 class="font-semibold text-green-700 mb-2 text-sm">Rides per Day</h3>
+        <canvas id="ridesChart"></canvas>
+      </div>
+      <div class="bg-white rounded-xl shadow p-4">
+        <h3 class="font-semibold text-green-700 mb-2 text-sm">Revenue per Day</h3>
+        <canvas id="revenueChart"></canvas>
+      </div>
+    </section>
 
-  <input id="emailSearch" class="w-full border px-3 py-2 rounded mb-3" placeholder="Search by email">
+    <!-- Student Accounts -->
+    <section class="bg-white rounded-xl shadow p-4">
+      <h3 class="font-semibold text-green-700 mb-3 text-sm">Manage Student Accounts</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-green-700 text-white">
+            <tr>
+              <th class="p-2 text-left">Name</th>
+              <th class="p-2 text-left">Email</th>
+              <th class="p-2 text-left">Balance</th>
+              <th class="p-2 text-left">Action</th>
+            </tr>
+          </thead>
+          <tbody id="studentsBody"></tbody>
+        </table>
+      </div>
+    </section>
 
-  <button id="searchBtn" class="bg-blue-600 text-white px-4 py-2 rounded">Search</button>
+    <!-- Recent Top-Ups -->
+    <section class="bg-white rounded-xl shadow p-4">
+      <h3 class="font-semibold text-green-700 mb-3 text-sm">Recent Top-Ups</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-green-700 text-white">
+            <tr>
+              <th class="p-2 text-left">Student</th>
+              <th class="p-2 text-left">Amount</th>
+              <th class="p-2 text-left">Time</th>
+            </tr>
+          </thead>
+          <tbody id="topupsBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
 
-  <div id="userCard" class="mt-4 p-4 border rounded hidden">
-    <p><b>Name:</b> <span id="uName"></span></p>
-    <p><b>Email:</b> <span id="uEmail"></span></p>
-    <p><b>Balance:</b> ₱<span id="uBalance"></span></p>
+  <script type="module">
+    import { auth, db } from "./firebase-config.js";
+    import {
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import {
+      collection,
+      doc,
+      getDoc,
+      getDocs,
+      query,
+      orderBy,
+      limit,
+      updateDoc,
+      addDoc
+    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-    <label class="block mt-3">Amount to Add</label>
-    <input id="topupAmount" class="w-full border px-3 py-2 rounded mb-2" type="number">
-    <button id="topupBtn" class="bg-green-600 text-white px-4 py-2 rounded mb-3">Top Up</button>
+    const logoutBtn = document.getElementById("logoutBtn");
+    logoutBtn.onclick = () => signOut(auth);
 
-    <label class="block">Assign RFID Tag</label>
-    <input id="rfidInput" class="w-full border px-3 py-2 rounded mb-2" placeholder="From ride logs">
-    <button id="saveRfidBtn" class="bg-purple-600 text-white px-4 py-2 rounded">Save RFID</button>
-  </div>
-</section>
+    const studentsBody = document.getElementById("studentsBody");
+    const topupsBody = document.getElementById("topupsBody");
+    const totalRidesEl = document.getElementById("totalRides");
+    const totalRevenueEl = document.getElementById("totalRevenue");
+    const activeStudentsEl = document.getElementById("activeStudents");
 
-<section class="bg-white p-4 rounded shadow">
-  <h2 class="text-green-700 font-semibold mb-3">Ride Logs</h2>
+    let ridesChart, revenueChart;
+    let currentAdmin = null;
 
-  <div class="border rounded" style="max-height:300px; overflow:auto;">
-    <table class="w-full text-sm">
-      <thead class="bg-green-700 text-white sticky top-0">
-        <tr>
-          <th class="p-2 text-left">Date</th>
-          <th class="p-2 text-left">RFID</th>
-          <th class="p-2 text-left">Route</th>
-          <th class="p-2 text-left">Fare</th>
-        </tr>
-      </thead>
-      <tbody id="adminRidesTbody"></tbody>
-    </table>
-  </div>
-</section>
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        location.href = "index.html";
+        return;
+      }
 
-</main>
+      const userRef = doc(db, "users", user.uid);
+      const snap = await getDoc(userRef);
+      if (!snap.exists() || snap.data().role !== "admin") {
+        // Not admin → redirect back
+        location.href = "campustap.html";
+        return;
+      }
+      currentAdmin = snap.data();
 
-<script type="module">
-import { auth, db, rtdb } from "./firebase-config.js";
-import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { collection, query, where, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+      await loadStudents();
+      await loadTopups();
+      await loadRideStats();
+    });
 
-let currentUserId = null;
+    async function loadStudents() {
+      const usersRef = collection(db, "users");
+      const qs = await getDocs(usersRef);
+      studentsBody.innerHTML = "";
+      qs.forEach((docSnap) => {
+        const u = docSnap.data();
+        const id = docSnap.id;
+        const row = document.createElement("tr");
+        row.className = "border-b";
+        row.innerHTML = `
+          <td class="p-2">${u.fullName || ""}</td>
+          <td class="p-2">${u.email || ""}</td>
+          <td class="p-2">₱${u.balance ?? 0}</td>
+          <td class="p-2">
+            <button data-id="${id}" data-name="${u.fullName || u.email}" class="topupBtn bg-green-600 text-white px-3 py-1 rounded text-xs">
+              Top-up
+            </button>
+          </td>`;
+        studentsBody.appendChild(row);
+      });
 
-onAuthStateChanged(auth, user => {
-  if (!user) location.href = "index.html";
-});
+      document.querySelectorAll(".topupBtn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const userId = btn.getAttribute("data-id");
+          const name = btn.getAttribute("data-name");
+          const amountStr = prompt(`Top-up amount for ${name} (₱):`, "50");
+          if (!amountStr) return;
+          const amount = parseInt(amountStr, 10);
+          if (isNaN(amount) || amount <= 0) {
+            alert("Invalid amount.");
+            return;
+          }
+          await applyTopup(userId, amount, name);
+          await loadStudents();
+          await loadTopups();
+        });
+      });
+    }
 
-logoutBtn.onclick = () => signOut(auth);
+    async function applyTopup(userId, amount, name) {
+      const uRef = doc(db, "users", userId);
+      const snap = await getDoc(uRef);
+      if (!snap.exists()) return;
+      const bal = snap.data().balance ?? 0;
+      await updateDoc(uRef, { balance: bal + amount });
 
-// SEARCH USER
-searchBtn.onclick = async () => {
-  const email = emailSearch.value.trim();
-  const q = query(collection(db, "users"), where("email", "==", email));
-  const snap = await getDocs(q);
+      const topupsRef = collection(db, "topups");
+      await addDoc(topupsRef, {
+        userId,
+        studentName: name,
+        amount,
+        adminEmail: currentAdmin.email,
+        timestamp: Date.now()
+      });
+    }
 
-  if (snap.empty) return alert("User not found.");
+    async function loadTopups() {
+      const topupsRef = collection(db, "topups");
+      const q = query(topupsRef, orderBy("timestamp", "desc"), limit(10));
+      const qs = await getDocs(q);
+      topupsBody.innerHTML = "";
+      qs.forEach((docSnap) => {
+        const t = docSnap.data();
+        const date = new Date(t.timestamp).toLocaleString();
+        topupsBody.innerHTML += `
+          <tr class="border-b">
+            <td class="p-2">${t.studentName || ""}</td>
+            <td class="p-2">₱${t.amount}</td>
+            <td class="p-2">${date}</td>
+          </tr>`;
+      });
+    }
 
-  const userDoc = snap.docs[0];
-  const data = userDoc.data();
+    async function loadRideStats() {
+      const ridesRef = collection(db, "rides");
+      const qs = await getDocs(ridesRef);
 
-  currentUserId = userDoc.id;
-  uName.textContent = data.fullName;
-  uEmail.textContent = data.email;
-  uBalance.textContent = data.balance;
+      const perDayCounts = {};
+      const perDayRevenue = {};
+      const activeSet = new Set();
 
-  userCard.classList.remove("hidden");
-};
+      let totalRides = 0;
+      qs.forEach((docSnap) => {
+        const r = docSnap.data();
+        if (!r.timestamp) return;
+        totalRides++;
+        const d = new Date(r.timestamp);
+        const key = d.toISOString().slice(0, 10);
+        perDayCounts[key] = (perDayCounts[key] || 0) + 1;
+        perDayRevenue[key] = (perDayRevenue[key] || 0) + (r.fare ?? 10);
+        if (r.userId) activeSet.add(r.userId);
+      });
 
-// TOP UP
-topupBtn.onclick = async () => {
-  if (!currentUserId) return alert("Search first.");
+      const labels = Object.keys(perDayCounts).sort();
+      const rideData = labels.map(k => perDayCounts[k]);
+      const revenueData = labels.map(k => perDayRevenue[k] || 0);
+      const totalRevenue = revenueData.reduce((a, b) => a + b, 0);
 
-  const amount = Number(topupAmount.value);
-  if (!amount || amount <= 0) return alert("Enter valid amount.");
+      totalRidesEl.textContent = totalRides;
+      totalRevenueEl.textContent = "₱" + totalRevenue;
+      activeStudentsEl.textContent = activeSet.size;
 
-  const userRef = doc(db, "users", currentUserId);
-  const snap = await getDocs(query(collection(db, "users"), where("__name__", "==", currentUserId)));
-  const data = snap.docs[0].data();
+      if (ridesChart) ridesChart.destroy();
+      if (revenueChart) revenueChart.destroy();
 
-  const newBal = (data.balance || 0) + amount;
+      const ctx1 = document.getElementById("ridesChart").getContext("2d");
+      ridesChart = new Chart(ctx1, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [{
+            label: "Rides",
+            data: rideData
+          }]
+        }
+      });
 
-  await updateDoc(userRef, { balance: newBal });
-  uBalance.textContent = newBal;
-
-  alert("Balance updated.");
-};
-
-// SAVE RFID
-saveRfidBtn.onclick = async () => {
-  if (!currentUserId) return alert("Search first.");
-  const rfid = rfidInput.value.trim();
-  if (!rfid) return alert("Enter RFID");
-
-  await updateDoc(doc(db, "users", currentUserId), { rfidTag: rfid });
-
-  alert("RFID saved.");
-};
-
-// LOAD ALL RIDE LOGS
-const ridesRef = ref(rtdb, "rides");
-onValue(ridesRef, snap => {
-  const tbody = document.getElementById("adminRidesTbody");
-  tbody.innerHTML = "";
-
-  const list = [];
-
-  snap.forEach(child => list.push(child.val()));
-
-  list.sort((a,b)=>b.timestamp - a.timestamp);
-
-  for (const r of list) {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td class="p-2">${new Date(r.timestamp).toLocaleString()}</td>
-      <td class="p-2">${r.uid}</td>
-      <td class="p-2">${r.route}</td>
-      <td class="p-2">₱${r.fare}</td>
-    `;
-    tbody.appendChild(row);
-  }
-});
-</script>
-
+      const ctx2 = document.getElementById("revenueChart").getContext("2d");
+      revenueChart = new Chart(ctx2, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{
+            label: "Revenue (₱)",
+            data: revenueData
+          }]
+        }
+      });
+    }
+  </script>
 </body>
 </html>
