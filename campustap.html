@@ -103,34 +103,29 @@
     } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
     import {
       doc,
-      getDoc,
+      onSnapshot,
       collection,
       query,
       where,
-      orderBy,
-      onSnapshot
+      orderBy
     } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
     import {
       ref,
       onValue
     } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
-    const adminTab = document.getElementById("adminTab");
-    const logoutBtn = document.getElementById("logoutBtn");
-    const balanceEl = document.getElementById("balance");
+    const adminTab   = document.getElementById("adminTab");
+    const logoutBtn  = document.getElementById("logoutBtn");
+    const balanceEl  = document.getElementById("balance");
     const ridesTbody = document.getElementById("rideHistoryBody");
 
     logoutBtn.onclick = () => signOut(auth);
 
-    let currentUser = null;
-
-    onAuthStateChanged(auth, async (user) => {
+    onAuthStateChanged(auth, (user) => {
       if (!user) {
         location.href = "index.html";
         return;
       }
-
-      currentUser = user;
 
       // Subscribe to user profile (balance + role)
       const userRef = doc(db, "users", user.uid);
@@ -143,7 +138,7 @@
         }
       });
 
-      // Subscribe to ride history for this user
+      // Subscribe to rides for this user
       const ridesRef = collection(db, "rides");
       const qRides = query(
         ridesRef,
@@ -159,7 +154,7 @@
             r.time ||
             (r.timestamp ? new Date(r.timestamp).toLocaleString() : "");
           const route = r.route || "USC Talamban Loop";
-          const fare = r.fare ?? 10;
+          const fare  = r.fare ?? 10;
 
           const tr = document.createElement("tr");
           tr.innerHTML = `
@@ -220,9 +215,9 @@
     };
   </script>
 
-  <!-- Google Maps API (make sure this key is allowed for your GitHub Pages domain) -->
+  <!-- Google Maps API with your NEW key -->
   <script
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCC6zhTh69EzWjLssvZx3HKbbquICIrK2s&callback=initMap"
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA6OmfsgRx-D6dN2Mto5Btczi8A64ReQJg&callback=initMap"
     async defer></script>
 
 </body>
