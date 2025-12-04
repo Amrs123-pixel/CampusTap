@@ -14,12 +14,15 @@ const firebaseConfig = {
   storageBucket: "campustap-522d8.firebasestorage.app",
   messagingSenderId: "929159058918",
   appId: "1:929159058918:web:2378bbb19f873e98dcb227"
-  databaseURL: "https://campustap-522d8-default-rtdb.asia-southeast1.firebasedatabase.app/"
 };
 
+// INIT Firebase App
 const app = initializeApp(firebaseConfig);
+
+// INIT Auth & Firestore
 const auth = getAuth(app);
 const db = getFirestore(app);
-const rtdb = getDatabase(app);
 
+// INIT Realtime Database (use second parameter)
+const rtdb = getDatabase(app, "https://campustap-522d8-default-rtdb.asia-southeast1.firebasedatabase.app");
 export { app, auth, db, rtdb };
