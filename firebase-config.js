@@ -8,7 +8,7 @@ import { getDatabase } from "https://www.gstatic.com/firebasejs/10.13.0/firebase
 
 // Your REAL Firebase Config (from screenshot)
 const firebaseConfig = {
-  apiKey: "AIzaSyA6OmfsgRx-D6dN2Mto5Btczi8A64ReQJg",
+ apiKey: "AIzaSyA6OmfsgRx-D6dN2Mto5Btczi8A64ReQJg",
   authDomain: "campustap-522d8.firebaseapp.com",
   databaseURL: "https://campustap-522d8-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "campustap-522d8",
