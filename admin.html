@@ -2,480 +2,349 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CampusTap — Admin Panel</title>
+  <title>CampusTap — Admin Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js for graphs -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-green-700 min-h-screen">
 
   <!-- NAVBAR -->
   <nav class="bg-white shadow p-4 flex justify-between items-center">
-    <h1 class="text-xl font-bold text-green-700">🚍 CampusTap Admin</h1>
-    <div class="space-x-4">
-      <a href="campustap.html" class="text-green-700 font-semibold">Map & History</a>
+    <h1 class="text-xl font-bold text-green-700">📊 Admin Dashboard — CampusTap</h1>
+    <div class="space-x-4 text-sm">
+      <a href="campustap.html" class="text-green-700 font-semibold">Map &amp; History</a>
       <a href="about.html" class="text-green-700 font-semibold">About</a>
       <a href="account.html" class="text-green-700 font-semibold">Account</a>
-      <button id="logoutBtn" class="bg-red-600 text-white px-3 py-1 rounded">
-        Logout
-      </button>
+      <button id="logoutBtn" class="bg-red-600 text-white px-3 py-1 rounded">Logout</button>
     </div>
   </nav>
 
   <main class="max-w-6xl mx-auto p-4 space-y-6">
 
-    <!-- OVERVIEW / CHARTS GRID -->
+    <!-- STATS CARDS -->
     <section class="grid md:grid-cols-3 gap-4">
-      <!-- Active Shuttle -->
       <div class="bg-white rounded-xl shadow p-4">
-        <h2 class="font-semibold text-green-700 mb-1">🟢 Shuttle Status</h2>
-        <p class="text-xs text-gray-500 mb-2">
-          Based on last GPS update from the ESP32 via Realtime Database.
-        </p>
-        <canvas id="shuttleChart" class="w-full h-40"></canvas>
-        <p id="shuttleStatusText" class="mt-2 text-xs text-gray-600">
-          Waiting for data…
-        </p>
+        <div class="text-xs text-gray-500 uppercase mb-1">Total Rides</div>
+        <div id="totalRides" class="text-2xl font-bold text-green-700">0</div>
       </div>
 
-      <!-- Daily Revenue -->
       <div class="bg-white rounded-xl shadow p-4">
-        <h2 class="font-semibold text-green-700 mb-1">💰 Revenue Today</h2>
-        <p class="text-xs text-gray-500 mb-2">
-          Sum of all fares recorded in Firestore rides for the last 24 hours.
-        </p>
-        <canvas id="dailyRevenueChart" class="w-full h-40"></canvas>
-        <p id="dailyRevenueText" class="mt-2 text-xs text-gray-600">
-          Loading daily revenue…
-        </p>
+        <div class="text-xs text-gray-500 uppercase mb-1">Total Revenue</div>
+        <div id="totalRevenue" class="text-2xl font-bold text-green-700">₱0</div>
       </div>
 
-      <!-- Weekly Revenue -->
       <div class="bg-white rounded-xl shadow p-4">
-        <h2 class="font-semibold text-green-700 mb-1">📈 Revenue (Last 7 Days)</h2>
-        <p class="text-xs text-gray-500 mb-2">
-          Total fares per day from Firestore rides.
-        </p>
-        <canvas id="weeklyRevenueChart" class="w-full h-40"></canvas>
+        <div class="text-xs text-gray-500 uppercase mb-1">Active Shuttle</div>
+        <div id="activeShuttle" class="text-2xl font-bold text-green-700">Checking…</div>
+        <div class="text-[10px] text-gray-500 mt-1" id="lastUpdate"></div>
       </div>
     </section>
 
-    <!-- STUDENT ACCOUNTS -->
+    <!-- CHARTS -->
+    <section class="grid md:grid-cols-2 gap-4">
+      <div class="bg-white rounded-xl shadow p-4">
+        <h2 class="text-sm font-bold text-green-700 mb-2">Daily Rides</h2>
+        <canvas id="ridesChart"></canvas>
+      </div>
+      <div class="bg-white rounded-xl shadow p-4">
+        <h2 class="text-sm font-bold text-green-700 mb-2">Daily Revenue</h2>
+        <canvas id="revenueChart"></canvas>
+      </div>
+    </section>
+
+    <!-- TOP-UP + USERS -->
     <section class="bg-white rounded-xl shadow p-4">
-      <div class="flex items-center justify-between mb-2">
-        <h2 class="font-semibold text-green-700">👥 Manage Student Accounts</h2>
-        <p class="text-xs text-gray-500">
-          View balances and add top-ups.
-        </p>
+      <h2 class="text-sm font-bold text-green-700 mb-3">🎫 Manage Student Balances (Top-Up)</h2>
+      <p class="text-xs text-gray-500 mb-2">
+        Select a user and apply a top-up amount. This writes directly to the <code>users</code> collection
+        and logs a record in <code>topups</code>.
+      </p>
+
+      <div class="flex flex-col md:flex-row gap-3 mb-4">
+        <select id="userSelect" class="flex-1 border rounded px-2 py-2 text-sm">
+          <option value="">Select user…</option>
+        </select>
+        <input id="topupAmount" type="number" min="1"
+               class="w-32 border rounded px-2 py-2 text-sm"
+               placeholder="Amount" />
+        <button id="topupBtn"
+                class="bg-green-700 text-white px-4 py-2 rounded text-sm font-semibold">
+          Top-Up
+        </button>
       </div>
 
       <div class="overflow-x-auto">
-        <table class="min-w-full text-sm">
-          <thead>
-            <tr class="bg-green-700 text-white">
-              <th class="px-3 py-2 text-left">Name</th>
-              <th class="px-3 py-2 text-left">Email</th>
-              <th class="px-3 py-2 text-right">Balance</th>
-              <th class="px-3 py-2 text-center">Role</th>
-              <th class="px-3 py-2 text-center">Action</th>
+        <table class="w-full text-sm border">
+          <thead class="bg-green-700 text-white">
+            <tr>
+              <th class="px-2 py-1 text-left">Name</th>
+              <th class="px-2 py-1 text-left">Email</th>
+              <th class="px-2 py-1 text-left">Role</th>
+              <th class="px-2 py-1 text-left">Balance</th>
             </tr>
           </thead>
-          <tbody id="studentsBody" class="divide-y divide-gray-100"></tbody>
+          <tbody id="usersBody"></tbody>
         </table>
       </div>
     </section>
 
     <!-- RECENT TOP-UPS -->
     <section class="bg-white rounded-xl shadow p-4">
-      <h2 class="font-semibold text-green-700 mb-2">💸 Recent Top-Ups</h2>
-      <p class="text-xs text-gray-500 mb-2">
-        Latest top-ups logged by admins (from Firestore <code>topups</code> collection).
-      </p>
+      <h2 class="text-sm font-bold text-green-700 mb-3">Recent Top-Ups</h2>
       <div class="overflow-x-auto">
-        <table class="min-w-full text-sm">
-          <thead>
-            <tr class="bg-green-700 text-white">
-              <th class="px-3 py-2 text-left">Student</th>
-              <th class="px-3 py-2 text-left">Email</th>
-              <th class="px-3 py-2 text-right">Amount</th>
-              <th class="px-3 py-2 text-left">Admin</th>
-              <th class="px-3 py-2 text-left">Time</th>
+        <table class="w-full text-sm border">
+          <thead class="bg-green-700 text-white">
+            <tr>
+              <th class="px-2 py-1 text-left">User</th>
+              <th class="px-2 py-1 text-left">Amount</th>
+              <th class="px-2 py-1 text-left">Admin</th>
+              <th class="px-2 py-1 text-left">Time</th>
             </tr>
           </thead>
-          <tbody id="topupsBody" class="divide-y divide-gray-100"></tbody>
+          <tbody id="topupsBody"></tbody>
         </table>
       </div>
     </section>
   </main>
 
-  <!-- FIREBASE + LOGIC -->
   <script type="module">
     import { auth, db, rtdb } from "./firebase-config.js";
     import {
-      collection,
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import {
       doc,
       onSnapshot,
-      updateDoc,
-      increment,
-      addDoc,
-      serverTimestamp,
+      collection,
       query,
+      where,
       orderBy,
-      limit
+      getDocs,
+      addDoc,
+      updateDoc
     } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
     import {
       ref,
       onValue
     } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
-    import {
-      onAuthStateChanged,
-      signOut
-    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
-    const logoutBtn = document.getElementById("logoutBtn");
-    const studentsBody = document.getElementById("studentsBody");
-    const topupsBody = document.getElementById("topupsBody");
-    const shuttleStatusText = document.getElementById("shuttleStatusText");
-    const dailyRevenueText = document.getElementById("dailyRevenueText");
+    const logoutBtn    = document.getElementById("logoutBtn");
+    const totalRidesEl = document.getElementById("totalRides");
+    const totalRevEl   = document.getElementById("totalRevenue");
+    const activeShEl   = document.getElementById("activeShuttle");
+    const lastUpdateEl = document.getElementById("lastUpdate");
+    const userSelect   = document.getElementById("userSelect");
+    const topupAmount  = document.getElementById("topupAmount");
+    const topupBtn     = document.getElementById("topupBtn");
+    const usersBody    = document.getElementById("usersBody");
+    const topupsBody   = document.getElementById("topupsBody");
 
     let currentAdmin = null;
+    let ridesChart, revenueChart;
 
-    // ======= AUTH GUARD (ADMIN ONLY) =======
+    logoutBtn.onclick = () => signOut(auth);
+
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
         location.href = "index.html";
         return;
       }
-
-      // Check role in Firestore
-      const userDocRef = doc(db, "users", user.uid);
-      onSnapshot(userDocRef, (snap) => {
-        if (!snap.exists()) {
-          alert("No profile found for this user.");
-          signOut(auth);
-          return;
-        }
-        const data = snap.data();
-        if (data.role !== "admin") {
-          alert("Access denied. Admin only.");
+      // Check if admin
+      const uRef = doc(db, "users", user.uid);
+      const unsub = onSnapshot(uRef, (snap) => {
+        if (!snap.exists() || snap.data().role !== "admin") {
+          // Not admin → redirect
           location.href = "campustap.html";
           return;
         }
-        currentAdmin = user;
+        currentAdmin = { uid: user.uid, ...snap.data() };
+      });
 
-        // Start admin listeners AFTER verifying role
-        initStudentsTable();
-        initTopupsTable();
-        initShuttleChartListener();
-        initRidesCharts();
+      // Load rides + charts
+      loadRidesAndCharts();
+
+      // Load users list
+      loadUsers();
+
+      // Load top-ups list
+      loadRecentTopups();
+
+      // Monitor shuttle activity (RTDB)
+      const shuttleRef = ref(rtdb, "shuttle/shuttle1");
+      onValue(shuttleRef, (snap) => {
+        const d = snap.val();
+        if (!d || typeof d.lat !== "number" || typeof d.lng !== "number") {
+          activeShEl.textContent = "Inactive";
+          return;
+        }
+        activeShEl.textContent = "Active";
+        const now = new Date();
+        lastUpdateEl.textContent = "Last RTDB update: " + now.toLocaleTimeString();
       });
     });
 
-    logoutBtn.onclick = () => signOut(auth);
-
-    // ======= CHART SETUP =======
-    let shuttleChart, dailyRevenueChart, weeklyRevenueChart;
-    let lastShuttleUpdate = 0;
-
-    function setupCharts() {
-      // Shuttle status chart
-      const shuttleCtx = document.getElementById("shuttleChart").getContext("2d");
-      shuttleChart = new Chart(shuttleCtx, {
-        type: "doughnut",
-        data: {
-          labels: ["Active", "Offline"],
-          datasets: [{
-            data: [0, 1],
-            backgroundColor: ["#22c55e", "#f97373"]
-          }]
-        },
-        options: {
-          plugins: {
-            legend: { position: "bottom" }
-          }
-        }
-      });
-
-      // Daily revenue chart (simple bar: Today vs 0)
-      const dailyCtx = document.getElementById("dailyRevenueChart").getContext("2d");
-      dailyRevenueChart = new Chart(dailyCtx, {
-        type: "bar",
-        data: {
-          labels: ["Today"],
-          datasets: [{
-            label: "Revenue (₱)",
-            data: [0],
-            backgroundColor: ["#16a34a"]
-          }]
-        },
-        options: {
-          plugins: { legend: { display: false } },
-          scales: {
-            y: {
-              beginAtZero: true
-            }
-          }
-        }
-      });
-
-      // Weekly revenue chart
-      const weeklyCtx = document.getElementById("weeklyRevenueChart").getContext("2d");
-      weeklyRevenueChart = new Chart(weeklyCtx, {
-        type: "bar",
-        data: {
-          labels: [],
-          datasets: [{
-            label: "Revenue (₱)",
-            data: [],
-            backgroundColor: "#22c55e"
-          }]
-        },
-        options: {
-          scales: {
-            y: { beginAtZero: true }
-          }
-        }
-      });
-    }
-
-    setupCharts();
-
-    // ======= SHUTTLE STATUS (RTDB) =======
-    function initShuttleChartListener() {
-      const shuttleRef = ref(rtdb, "shuttle/shuttle1");
-      onValue(shuttleRef, (snap) => {
-        const val = snap.val();
-        if (val && typeof val.lat === "number" && typeof val.lng === "number") {
-          lastShuttleUpdate = Date.now();
-          updateShuttleStatus();
-        }
-      });
-
-      // check every 10s if stale
-      setInterval(updateShuttleStatus, 10000);
-    }
-
-    function updateShuttleStatus() {
-      const now = Date.now();
-      const active = lastShuttleUpdate && (now - lastShuttleUpdate < 20000); // 20 seconds
-
-      shuttleChart.data.datasets[0].data = active ? [1, 0] : [0, 1];
-      shuttleChart.update();
-
-      if (!lastShuttleUpdate) {
-        shuttleStatusText.textContent = "Waiting for first GPS update from ESP32…";
-      } else if (active) {
-        shuttleStatusText.textContent = "Shuttle is ACTIVE (received GPS within last 20 seconds).";
-      } else {
-        shuttleStatusText.textContent = "Shuttle appears OFFLINE (no GPS update in the last 20 seconds).";
-      }
-    }
-
-    // ======= RIDES REVENUE (FIRESTORE) =======
-    function initRidesCharts() {
+    async function loadRidesAndCharts() {
       const ridesRef = collection(db, "rides");
-      const q = query(ridesRef, orderBy("timestamp", "asc"));
+      const qAll = query(ridesRef, orderBy("timestamp", "desc"));
+      const qs = await getDocs(qAll);
 
-      onSnapshot(q, (snap) => {
-        const today = new Date();
-        const todayKey = ymd(today);
-        const nowMs = Date.now();
+      let totalRides = 0;
+      let totalRevenue = 0;
+      const byDate = {};
 
-        let todayRevenue = 0;
+      qs.forEach((docSnap) => {
+        const r = docSnap.data();
+        const fare = r.fare ?? 10;
+        const ts = r.timestamp || Date.now();
+        const d = new Date(ts);
+        const dateKey = d.toISOString().slice(0, 10);
 
-        // For last 7 days
-        const sevenDayMap = {}; // key: ymd -> revenue
-        const msPerDay = 24 * 60 * 60 * 1000;
-        const sevenDaysAgo = nowMs - 6 * msPerDay;
+        totalRides += 1;
+        totalRevenue += fare;
 
-        snap.forEach((docSnap) => {
-          const r = docSnap.data();
-          const fare = Number(r.fare ?? 10);
-
-          let t;
-          if (r.timestamp && typeof r.timestamp.toDate === "function") {
-            t = r.timestamp.toDate();
-          } else if (typeof r.timestamp === "number") {
-            t = new Date(r.timestamp);
-          } else {
-            return; // skip if no timestamp
-          }
-
-          const tMs = t.getTime();
-          if (tMs < sevenDaysAgo) return; // outside 7 days
-
-          const key = ymd(t);
-
-          // Accumulate for 7-day chart
-          sevenDayMap[key] = (sevenDayMap[key] || 0) + fare;
-
-          // Today revenue (last 24h)
-          if (key === todayKey) {
-            todayRevenue += fare;
-          }
-        });
-
-        // Update daily chart
-        dailyRevenueChart.data.datasets[0].data = [todayRevenue];
-        dailyRevenueChart.update();
-        dailyRevenueText.textContent = `Total revenue today: ₱${todayRevenue.toFixed(2)}`;
-
-        // Build weekly data arrays for last 7 days
-        const labels = [];
-        const values = [];
-        for (let i = 6; i >= 0; i--) {
-          const d = new Date(nowMs - i * msPerDay);
-          const key = ymd(d);
-          labels.push(shortDate(d));
-          values.push(sevenDayMap[key] || 0);
+        if (!byDate[dateKey]) {
+          byDate[dateKey] = { rides: 0, revenue: 0 };
         }
+        byDate[dateKey].rides += 1;
+        byDate[dateKey].revenue += fare;
+      });
 
-        weeklyRevenueChart.data.labels = labels;
-        weeklyRevenueChart.data.datasets[0].data = values;
-        weeklyRevenueChart.update();
+      totalRidesEl.textContent = totalRides;
+      totalRevEl.textContent   = "₱" + totalRevenue;
+
+      const labels = Object.keys(byDate).sort();
+      const ridesData   = labels.map(d => byDate[d].rides);
+      const revenueData = labels.map(d => byDate[d].revenue);
+
+      const ctxRides = document.getElementById("ridesChart").getContext("2d");
+      const ctxRev   = document.getElementById("revenueChart").getContext("2d");
+
+      if (ridesChart) ridesChart.destroy();
+      if (revenueChart) revenueChart.destroy();
+
+      ridesChart = new Chart(ctxRides, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [{
+            label: "Rides",
+            data: ridesData
+          }]
+        }
+      });
+
+      revenueChart = new Chart(ctxRev, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{
+            label: "Revenue (₱)",
+            data: revenueData
+          }]
+        }
       });
     }
 
-    function ymd(d) {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      return `${y}-${m}-${day}`;
-    }
-
-    function shortDate(d) {
-      return `${d.getMonth() + 1}/${d.getDate()}`;
-    }
-
-    // ======= STUDENT TABLE + TOP-UP =======
-    function initStudentsTable() {
+    async function loadUsers() {
       const usersRef = collection(db, "users");
-      const q = query(usersRef, orderBy("fullName"));
+      const qs = await getDocs(usersRef);
 
-      onSnapshot(q, (snap) => {
-        studentsBody.innerHTML = "";
-        snap.forEach((docSnap) => {
-          const u = docSnap.data();
-          const uid = docSnap.id;
-          const name = u.fullName || "Unknown";
-          const email = u.email || "";
-          const balance = Number(u.balance ?? 0);
-          const role = u.role || "student";
+      userSelect.innerHTML = `<option value="">Select user…</option>`;
+      usersBody.innerHTML  = "";
 
-          const tr = document.createElement("tr");
-          tr.className = "hover:bg-gray-50";
-          tr.innerHTML = `
-            <td class="px-3 py-2">${name}</td>
-            <td class="px-3 py-2">${email}</td>
-            <td class="px-3 py-2 text-right">₱${balance.toFixed(2)}</td>
-            <td class="px-3 py-2 text-center">
-              <span class="text-xs px-2 py-1 rounded-full ${
-                role === "admin"
-                  ? "bg-purple-100 text-purple-700"
-                  : "bg-green-100 text-green-700"
-              }">
-                ${role}
-              </span>
-            </td>
-            <td class="px-3 py-2 text-center">
-              ${
-                role === "admin"
-                  ? `<button disabled class="text-xs bg-gray-300 text-gray-600 px-3 py-1 rounded cursor-not-allowed">Top-Up</button>`
-                  : `<button data-uid="${uid}" data-name="${name}" data-email="${email}"
-                             class="topup-btn text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded">
-                       Top-Up
-                     </button>`
-              }
-            </td>
-          `;
-          studentsBody.appendChild(tr);
-        });
+      qs.forEach((docSnap) => {
+        const d = docSnap.data();
+        const uid = docSnap.id;
 
-        attachTopupHandlers();
+        // Fill dropdown (students only, but keep admin as well if you like)
+        userSelect.innerHTML += `
+          <option value="${uid}">
+            ${d.fullName || "No Name"} — ${d.email}
+          </option>`;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="px-2 py-1">${d.fullName || "—"}</td>
+          <td class="px-2 py-1">${d.email || "—"}</td>
+          <td class="px-2 py-1">${d.role || "student"}</td>
+          <td class="px-2 py-1">₱${d.balance ?? 0}</td>
+        `;
+        usersBody.appendChild(tr);
       });
     }
 
-    function attachTopupHandlers() {
-      document.querySelectorAll(".topup-btn").forEach((btn) => {
-        btn.onclick = async () => {
-          const uid = btn.getAttribute("data-uid");
-          const name = btn.getAttribute("data-name");
-          const email = btn.getAttribute("data-email");
-
-          let amountStr = prompt(`Top-up amount for ${name} (₱):`, "50");
-          if (amountStr === null) return; // cancelled
-
-          const amount = Number(amountStr);
-          if (!amount || amount <= 0) {
-            alert("Please enter a valid positive amount.");
-            return;
-          }
-
-          if (!confirm(`Confirm top-up ₱${amount.toFixed(2)} for ${name}?`)) {
-            return;
-          }
-
-          try {
-            const userRef = doc(db, "users", uid);
-            await updateDoc(userRef, { balance: increment(amount) });
-
-            await addDoc(collection(db, "topups"), {
-              userId: uid,
-              studentName: name,
-              studentEmail: email,
-              amount,
-              adminEmail: currentAdmin?.email || "",
-              timestamp: serverTimestamp()
-            });
-
-            alert("Top-up successful.");
-          } catch (err) {
-            console.error(err);
-            alert("Top-up failed: " + err.message);
-          }
-        };
-      });
-    }
-
-    // ======= RECENT TOP-UPS TABLE =======
-    function initTopupsTable() {
+    async function loadRecentTopups() {
       const topupsRef = collection(db, "topups");
-      const q = query(topupsRef, orderBy("timestamp", "desc"), limit(10));
+      const qTop = query(topupsRef, orderBy("timestamp", "desc"));
+      const qs = await getDocs(qTop);
 
-      onSnapshot(q, (snap) => {
-        topupsBody.innerHTML = "";
-        if (snap.empty) {
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td colspan="5" class="text-center text-xs text-gray-500 py-3">
-              No top-ups recorded yet.
-            </td>
-          `;
-          topupsBody.appendChild(tr);
+      topupsBody.innerHTML = "";
+      qs.forEach((docSnap) => {
+        const t = docSnap.data();
+        const ts = t.timestamp ? new Date(t.timestamp).toLocaleString() : "";
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="px-2 py-1">${t.userEmail || t.userId}</td>
+          <td class="px-2 py-1">₱${t.amount ?? 0}</td>
+          <td class="px-2 py-1">${t.adminEmail || "—"}</td>
+          <td class="px-2 py-1">${ts}</td>
+        `;
+        topupsBody.appendChild(tr);
+      });
+    }
+
+    topupBtn.onclick = async () => {
+      const uid = userSelect.value;
+      const amt = parseInt(topupAmount.value, 10);
+
+      if (!uid) {
+        alert("Select a user first.");
+        return;
+      }
+      if (!amt || amt <= 0) {
+        alert("Enter a valid amount.");
+        return;
+      }
+
+      try {
+        const uRef = doc(db, "users", uid);
+        const snap = await getDocs(query(collection(db, "users"), where("__name__", "==", uid)));
+        // simpler: use onSnapshot in real app, but here we'll just do updateDoc with increment logic
+
+        // Get doc directly
+        const userDoc = await (await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js"))
+          .getDoc(uRef);
+        if (!userDoc.exists()) {
+          alert("User doc not found.");
           return;
         }
 
-        snap.forEach((docSnap) => {
-          const t = docSnap.data();
-          let timeStr = "";
-          if (t.timestamp && typeof t.timestamp.toDate === "function") {
-            timeStr = t.timestamp.toDate().toLocaleString();
-          }
-
-          const tr = document.createElement("tr");
-          tr.className = "hover:bg-gray-50";
-          tr.innerHTML = `
-            <td class="px-3 py-2">${t.studentName || ""}</td>
-            <td class="px-3 py-2">${t.studentEmail || ""}</td>
-            <td class="px-3 py-2 text-right">₱${Number(t.amount ?? 0).toFixed(2)}</td>
-            <td class="px-3 py-2">${t.adminEmail || ""}</td>
-            <td class="px-3 py-2 text-xs text-gray-600">${timeStr}</td>
-          `;
-          topupsBody.appendChild(tr);
+        const currentBalance = userDoc.data().balance ?? 0;
+        await updateDoc(uRef, {
+          balance: currentBalance + amt
         });
-      });
-    }
+
+        // Log top-up
+        await addDoc(collection(db, "topups"), {
+          userId: uid,
+          userEmail: userDoc.data().email || "",
+          amount: amt,
+          adminId: currentAdmin ? currentAdmin.uid : null,
+          adminEmail: currentAdmin ? currentAdmin.email : "",
+          timestamp: Date.now()
+        });
+
+        alert("Top-up successful!");
+        topupAmount.value = "";
+        await loadUsers();
+        await loadRecentTopups();
+      } catch (err) {
+        console.error(err);
+        alert("Top-up failed: " + err.message);
+      }
+    };
   </script>
 </body>
 </html>
