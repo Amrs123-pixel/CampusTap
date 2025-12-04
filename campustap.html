@@ -138,7 +138,7 @@
         }
       });
 
-      // Subscribe to rides for this user
+      // Subscribe to rides
       const ridesRef = collection(db, "rides");
       const qRides = query(
         ridesRef,
@@ -175,11 +175,16 @@
         }
       });
 
-      // RTDB — subscribe to shuttle GPS
+      // RTDB — shuttle GPS listener with fix
       const shuttleRef = ref(rtdb, "shuttle/shuttle1");
       onValue(shuttleRef, (snap) => {
         const d = snap.val();
-        if (!d || typeof d.lat !== "number" || typeof d.lng !== "number") return;
+        if (!d) return;
+
+        // 🚀 FIX: ignore invalid GPS
+        if (typeof d.lat !== "number" || typeof d.lng !== "number") return;
+        if (d.lat === 0 || d.lng === 0) return;
+
         if (window.setShuttlePosition) {
           window.setShuttlePosition({ lat: d.lat, lng: d.lng });
         }
@@ -207,7 +212,6 @@
       });
     }
 
-    // Called from RTDB listener
     window.setShuttlePosition = function (pos) {
       if (!map || !shuttleMarker) return;
       shuttleMarker.setPosition(pos);
@@ -215,7 +219,7 @@
     };
   </script>
 
-  <!-- Google Maps API with your NEW key -->
+  <!-- Google Maps API -->
   <script
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA6OmfsgRx-D6dN2Mto5Btczi8A64ReQJg&callback=initMap"
     async defer></script>
