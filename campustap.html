@@ -1,176 +1,90 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>CampusTap — Map & Ride History</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <title>CampusTap — Map</title>
   <script src="https://cdn.tailwindcss.com"></script>
 
   <style>
     #map {
       width: 100%;
-      height: 330px;
-      border-radius: 12px;
-    }
-    .card {
-      max-width: 900px;
-      margin: 20px auto;
-      background: #fff;
-      padding: 20px;
-      border-radius: 14px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      height: 350px;
+      border-radius: 10px;
     }
   </style>
 </head>
 
 <body class="bg-green-700 min-h-screen">
 
-  <!-- NAVBAR -->
-  <nav class="bg-white shadow p-4 flex justify-between items-center">
-    <h1 class="text-xl font-bold text-green-700">🚍 CampusTap</h1>
-    <div class="space-x-4">
-      <a href="campustap.html" class="text-green-700 font-semibold underline">Map</a>
-      <a href="about.html" class="text-green-700 font-semibold">About</a>
-      <a href="account.html" class="text-green-700 font-semibold">Account</a>
-      <a href="admin.html" id="adminTab" class="text-green-700 font-semibold hidden">Admin</a>
-      <button id="logoutBtn" class="bg-red-600 text-white px-4 py-1 rounded">Logout</button>
+  <nav class="bg-white p-4 flex justify-between">
+    <h1 class="text-xl font-bold text-green-700">CampusTap</h1>
+    <div class="space-x-3">
+      <a href="campustap.html">Map</a>
+      <a href="account.html">Account</a>
+      <a href="admin.html" id="adminTab" class="hidden">Admin</a>
+      <button id="logoutBtn" class="text-red-600">Logout</button>
     </div>
   </nav>
 
-  <!-- MAP CARD -->
-  <section class="card">
-    <h2 class="text-green-700 text-lg font-bold mb-2">📍 Shuttle Live Location</h2>
-    <p class="text-xs text-gray-500 mb-3">Live GPS powered by Firebase Realtime Database.</p>
+  <div class="max-w-xl mx-auto mt-4 bg-white p-4 rounded-xl shadow">
+    <h2 class="text-lg font-bold text-green-700">🚌 Shuttle Live Location</h2>
     <div id="map"></div>
-  </section>
+  </div>
 
-  <!-- RIDE HISTORY CARD -->
-  <section class="card">
-    <h2 class="text-green-700 text-lg font-bold mb-2">🧾 Recent RFID Rides</h2>
-    <p class="text-xs text-gray-500 mb-2">All rides logged from the onboard ESP32 device.</p>
-
-    <div class="border rounded-lg overflow-y-auto max-h-60">
-      <table class="w-full text-sm">
-        <thead class="bg-green-700 text-white">
-          <tr>
-            <th class="p-2 text-left">RFID UID</th>
-            <th class="p-2 text-left">Route</th>
-            <th class="p-2 text-left">Fare</th>
-            <th class="p-2 text-left">Timestamp</th>
-          </tr>
-        </thead>
-        <tbody id="rideHistoryBody"></tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- FIREBASE + RTDB + FIRESTORE -->
   <script type="module">
     import { auth, db, rtdb } from "./firebase-config.js";
-
-    import {
-      ref as rtdbRef,
-      onValue
-    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
-
-    import {
-      collection,
-      query,
-      orderBy,
-      limit,
-      onSnapshot,
-      doc,
-      getDoc
-    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-
-    import {
-      onAuthStateChanged,
-      signOut
-    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { onAuthStateChanged, signOut } 
+      from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { onValue, ref } 
+      from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+    import { getDoc, doc } 
+      from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
     const adminTab = document.getElementById("adminTab");
-    const logoutBtn = document.getElementById("logoutBtn");
-    const ridesTbody = document.getElementById("rideHistoryBody");
-
-    logoutBtn.onclick = () => signOut(auth);
 
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
         location.href = "index.html";
         return;
       }
-      const userRef = doc(db, "users", user.uid);
-      const snap = await getDoc(userRef);
-      if (snap.exists() && snap.data().role === "admin") {
+
+      const u = await getDoc(doc(db, "users", user.uid));
+      if (u.exists() && u.data().role === "admin") {
         adminTab.classList.remove("hidden");
       }
-
-      subscribeGPS();
-      subscribeRides();
     });
 
-    function subscribeGPS() {
-      const gpsRef = rtdbRef(rtdb, "shuttle/shuttle1");
-      onValue(gpsRef, (snapshot) => {
-        const d = snapshot.val();
-        if (d && d.lat && d.lng && window.setShuttleMarker) {
-          window.setShuttleMarker({ lat: d.lat, lng: d.lng });
-        }
-      });
-    }
+    logoutBtn.onclick = () => signOut(auth);
 
-    function subscribeRides() {
-      const ridesRef = collection(db, "rides");
-      const q = query(ridesRef, orderBy("timestamp", "desc"), limit(30));
-
-      onSnapshot(q, (qs) => {
-        ridesTbody.innerHTML = "";
-        qs.forEach((docSnap) => {
-          const r = docSnap.data();
-          const uid = r.uid || "(unknown)";
-          const route = r.route || "USC Talamban Loop";
-          const fare = r.fare ?? 10;
-          const ts = r.timestamp || "";
-
-          ridesTbody.innerHTML += `
-            <tr class="border-b">
-              <td class="p-2">${uid}</td>
-              <td class="p-2">${route}</td>
-              <td class="p-2">₱${fare}</td>
-              <td class="p-2 text-xs">${ts}</td>
-            </tr>`;
-        });
-      });
-    }
-  </script>
-
-  <!-- GOOGLE MAPS -->
-  <script>
-    let map, shuttleMarker;
+    let map, marker;
 
     function initMap() {
-      const defaultPos = { lat: 10.3541, lng: 123.9114 };
-
       map = new google.maps.Map(document.getElementById("map"), {
         zoom: 16,
-        center: defaultPos
+        center: { lat: 10.3541, lng: 123.9114 }
       });
 
-      shuttleMarker = new google.maps.Marker({
+      marker = new google.maps.Marker({
         map,
-        position: defaultPos,
-        title: "Shuttle"
+        position: { lat: 10.3541, lng: 123.9114 }
       });
     }
 
-    window.setShuttleMarker = function (pos) {
-      if (!map || !shuttleMarker) return;
-      shuttleMarker.setPosition(pos);
+    window.initMap = initMap;
+
+    const shuttleRef = ref(rtdb, "shuttle/shuttle1");
+
+    onValue(shuttleRef, (snap) => {
+      const d = snap.val();
+      if (!d) return;
+
+      const pos = { lat: d.lat, lng: d.lng };
+
+      marker.setPosition(pos);
       map.setCenter(pos);
-    };
+    });
   </script>
 
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCC6zhTh69EzWjLssvZx3HKbbquICIrK2s&callback=initMap" async defer></script>
-
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap"></script>
 </body>
 </html>
