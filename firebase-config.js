@@ -1,33 +1,29 @@
 // firebase-config.js
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { getAuth, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import { getDatabase } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
-// ❗ NO databaseURL here ❗
 const firebaseConfig = {
-  apiKey: "AIzaSyA6OmfsgRx-D6dN2Mto5Btczi8A64ReQJg",
+  apiKey: "AIzaSyCC6zhTh69EzWjLssvZx3HKbbquICIrK2s",
   authDomain: "campustap-522d8.firebaseapp.com",
+  databaseURL: "https://campustap-522d8-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "campustap-522d8",
-  storageBucket: "campustap-522d8.firebasestorage.app",
+  storageBucket: "campustap-522d8.appspot.com",
   messagingSenderId: "929159058918",
   appId: "1:929159058918:web:2378bbb19f873e98dcb227"
 };
 
-// ✅ Initialize app
+// INIT Firebase
 const app = initializeApp(firebaseConfig);
-
-// Authentication
 const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 
 // Firestore
 const db = getFirestore(app);
 
-// Realtime Database — MUST specify URL here
-const rtdb = getDatabase(
-  app,
-  "https://campustap-522d8-default-rtdb.asia-southeast1.firebasedatabase.app"
-);
+// Realtime DB
+const rtdb = getDatabase(app, firebaseConfig.databaseURL);
 
-export { app, auth, db, rtdb };
+export { app, auth, provider, db, rtdb };
