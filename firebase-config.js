@@ -1,14 +1,14 @@
 // firebase-config.js
-// FINAL WORKING VERSION — uses your correct Firebase Web App config
 
+// Firebase Imports (Modular SDK)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import { getDatabase } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
-// Your correct Firebase config
+// Your REAL Firebase Config (from screenshot)
 const firebaseConfig = {
-  apiKey: "AIzaSyA6OmfsgRx-D6dN2Mto5Btczi8A64ReQJg",
+  apiKey: "AIzaSyA6OmfsgRx-D6dN2Mto5Btczzi8A64ReQJg",
   authDomain: "campustap-522d8.firebaseapp.com",
   databaseURL: "https://campustap-522d8-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "campustap-522d8",
@@ -20,13 +20,10 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Auth
+// Services
 const auth = getAuth(app);
-
-// Initialize Firestore
 const db = getFirestore(app);
+const rtdb = getDatabase(app);
 
-// Initialize Realtime Database
-const rtdb = getDatabase(app, firebaseConfig.databaseURL);
-
+// Export for use in all HTML pages
 export { app, auth, db, rtdb };
