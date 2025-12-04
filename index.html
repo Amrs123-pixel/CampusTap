@@ -73,7 +73,7 @@
 
     function detectRole(email) {
       const domain = (email.split("@")[1] || "").toLowerCase();
-      if (domain === "usc.edu.ph") return "admin";  // adjust if you want fewer admins
+      if (domain === "usc.edu.ph") return "admin"; 
       return "student";
     }
 
@@ -146,7 +146,6 @@
       }
     };
 
-    // If already logged in, redirect automatically
     onAuthStateChanged(auth, async (user) => {
       if (!user) return;
       const profile = await ensureUserProfile(user);
