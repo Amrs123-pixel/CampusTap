@@ -18,7 +18,7 @@
       background: #ffffff;
       padding: 20px;
       border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
     }
     .ride-history-table {
       max-height: 260px;
@@ -77,7 +77,7 @@
   <section class="card">
     <h2 class="text-green-700 text-lg font-bold mb-2">🧾 Ride History (RFID Taps)</h2>
     <p class="text-xs text-gray-500 mb-2">
-      These rides are loaded from Firestore and are expected to be written by the ESP32 for each RFID tap.
+      These rides are loaded from Firestore and written by the ESP32 for each RFID tap.
     </p>
 
     <div class="ride-history-table">
@@ -94,7 +94,7 @@
     </div>
   </section>
 
-  <!-- FIREBASE: AUTH + FIRESTORE + RTDB -->
+  <!-- FIREBASE MODULE -->
   <script type="module">
     import { auth, db, rtdb } from "./firebase-config.js";
     import {
@@ -114,9 +114,9 @@
       onValue
     } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
-    const adminTab   = document.getElementById("adminTab");
-    const logoutBtn  = document.getElementById("logoutBtn");
-    const balanceEl  = document.getElementById("balance");
+    const adminTab = document.getElementById("adminTab");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const balanceEl = document.getElementById("balance");
     const ridesTbody = document.getElementById("rideHistoryBody");
 
     logoutBtn.onclick = () => signOut(auth);
@@ -127,18 +127,16 @@
         return;
       }
 
-      // Subscribe to user profile (balance + role)
+      // --- USER PROFILE (BALANCE + ROLE) ---
       const userRef = doc(db, "users", user.uid);
       onSnapshot(userRef, (snap) => {
         if (!snap.exists()) return;
         const data = snap.data();
         balanceEl.textContent = "₱" + (data.balance ?? 0);
-        if (data.role === "admin") {
-          adminTab.classList.remove("hidden");
-        }
+        if (data.role === "admin") adminTab.classList.remove("hidden");
       });
 
-      // Subscribe to rides
+      // --- RIDE HISTORY ---
       const ridesRef = collection(db, "rides");
       const qRides = query(
         ridesRef,
@@ -148,40 +146,44 @@
 
       onSnapshot(qRides, (qs) => {
         ridesTbody.innerHTML = "";
-        qs.forEach((docSnap) => {
+
+        if (qs.empty) {
+          ridesTbody.innerHTML = `
+            <tr><td colspan="3" class="text-center text-gray-500 text-xs py-3">
+              No rides recorded yet.
+            </td></tr>`;
+          return;
+        }
+
+        qs.forEach(docSnap => {
           const r = docSnap.data();
-          const dateStr =
-            r.time ||
-            (r.timestamp ? new Date(r.timestamp).toLocaleString() : "");
-          const route = r.route || "USC Talamban Loop";
-          const fare  = r.fare ?? 10;
+
+          // PARSE TIMESTAMP (Firestore or string)
+          let displayTime = "—";
+
+          if (r.timestamp?.toDate) {
+            displayTime = r.timestamp.toDate().toLocaleString();
+          } else if (typeof r.timestamp === "string") {
+            const d = new Date(r.timestamp);
+            if (!isNaN(d)) displayTime = d.toLocaleString();
+          }
 
           const tr = document.createElement("tr");
           tr.innerHTML = `
-            <td>${dateStr}</td>
-            <td>${route}</td>
-            <td>₱${fare}</td>
+            <td>${displayTime}</td>
+            <td>${r.route || "USC Talamban Loop"}</td>
+            <td>₱${r.fare ?? 10}</td>
           `;
           ridesTbody.appendChild(tr);
         });
-
-        if (qs.empty) {
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td colspan="3" class="text-center text-xs text-gray-500 py-3">
-              No rides recorded yet.
-            </td>`;
-          ridesTbody.appendChild(tr);
-        }
       });
 
-      // RTDB — shuttle GPS listener with fix
+      // --- LIVE GPS SHUTTLE POSITION ---
       const shuttleRef = ref(rtdb, "shuttle/shuttle1");
       onValue(shuttleRef, (snap) => {
         const d = snap.val();
         if (!d) return;
 
-        // 🚀 FIX: ignore invalid GPS
         if (typeof d.lat !== "number" || typeof d.lng !== "number") return;
         if (d.lat === 0 || d.lng === 0) return;
 
@@ -194,8 +196,7 @@
 
   <!-- GOOGLE MAPS -->
   <script>
-    let map;
-    let shuttleMarker;
+    let map, shuttleMarker;
 
     function initMap() {
       const uscTalamban = { lat: 10.3541, lng: 123.9114 };
@@ -219,10 +220,8 @@
     };
   </script>
 
-  <!-- Google Maps API -->
-  <script
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA6OmfsgRx-D6dN2Mto5Btczi8A64ReQJg&callback=initMap"
-    async defer></script>
+  <!-- GOOGLE MAPS API -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA6OmfsgRx-D6dN2Mto5Btczi8A64ReQJg&callback=initMap" async defer></script>
 
 </body>
 </html>
