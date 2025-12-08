@@ -1,22 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Your Account</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+  <!-- Firebase COMPAT MODE -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
   <script src="firebase-config.js"></script>
 </head>
 
 <body class="bg-green-700 min-h-screen text-white">
 
 <nav class="bg-white p-4 text-green-700">
-  <a href="campustap.html" class="font-bold">&larr; Back to Dashboard</a>
+  <a href="campustap.html" class="font-bold">← Back</a>
 </nav>
 
 <main class="max-w-4xl mx-auto p-6 bg-white text-gray-900 mt-6 rounded shadow">
@@ -44,41 +46,32 @@
 </main>
 
 <script>
-const auth = firebase.getAuth();
-const db = firebase.getFirestore();
+auth.onAuthStateChanged(user => {
+  if (!user) return location = "index.html";
 
-firebase.onAuthStateChanged(auth, user => {
-  if (!user) return (window.location = "index.html");
-
-  const userRef = firebase.doc(db, "users", user.uid);
-
-  firebase.onSnapshot(userRef, snap => {
-    const d = snap.data();
-    document.getElementById('balanceBox').textContent = "₱" + (d.balance ?? 0);
-    document.getElementById('rfidBox').textContent = d.rfid ?? "Not linked";
+  const userRef = db.doc(`users/${user.uid}`);
+  userRef.onSnapshot(doc => {
+    const d = doc.data();
+    balanceBox.textContent = "₱" + (d.balance ?? 0);
+    rfidBox.textContent = d.rfid ?? "No RFID linked";
   });
 
-  const q = firebase.query(
-    firebase.collection(db, "rides"),
-    firebase.where("userId", "==", user.uid),
-    firebase.orderBy("timestamp", "desc")
-  );
-
-  firebase.onSnapshot(q, snapshot => {
-    const tbody = document.getElementById("rideTable");
-    tbody.innerHTML = "";
-
-    snapshot.forEach(doc => {
-      const d = doc.data();
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td class="p-2 border">${new Date(d.timestamp).toLocaleString()}</td>
-        <td class="p-2 border">${d.route}</td>
-        <td class="p-2 border">₱${d.fare}</td>
-      `;
-      tbody.appendChild(tr);
+  db.collection("rides")
+    .where("userId", "==", user.uid)
+    .orderBy("timestamp", "desc")
+    .onSnapshot(snapshot => {
+      rideTable.innerHTML = "";
+      snapshot.forEach(doc => {
+        const d = doc.data();
+        rideTable.innerHTML += `
+          <tr>
+            <td class="p-2 border">${new Date(d.timestamp).toLocaleString()}</td>
+            <td class="p-2 border">${d.route}</td>
+            <td class="p-2 border">₱${d.fare}</td>
+          </tr>
+        `;
+      });
     });
-  });
 });
 </script>
 

@@ -1,23 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>CampusTap Admin Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+  <!-- Firebase COMPAT MODE -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
-  <!-- Load Firebase Config -->
   <script src="firebase-config.js"></script>
 </head>
 
 <body class="bg-green-700 min-h-screen text-white">
 
-<!-- NAVBAR -->
 <nav class="bg-white text-green-700 shadow p-4 flex justify-between">
   <h1 class="font-bold text-xl">CampusTap Admin Dashboard</h1>
   <button id="logoutBtn" class="bg-green-700 text-white px-4 py-1 rounded">Logout</button>
@@ -28,7 +27,7 @@
   <h2 class="text-xl font-bold text-green-700">Manage User Balances</h2>
 
   <div class="mt-4 bg-gray-100 p-4 rounded shadow">
-    <label class="block">Select User</label>
+    <label>Select User</label>
     <select id="userSelect" class="border rounded p-2 w-full mt-1"></select>
 
     <label class="block mt-4">Top-Up Amount</label>
@@ -38,6 +37,7 @@
   </div>
 
   <h2 class="text-xl font-bold text-green-700 mt-8">Recent Top-Ups</h2>
+
   <table class="w-full mt-2 border">
     <thead class="bg-green-700 text-white">
       <tr>
@@ -53,140 +53,82 @@
 </main>
 
 <script>
-  // Initialize Firebase
-  const app = firebase.initializeApp(firebaseConfig);
-  const auth = firebase.getAuth(app);
-  const db = firebase.getFirestore(app);
+// ========== AUTH LISTENER ==========
+auth.onAuthStateChanged(user => {
+  if (!user) return location = "index.html";
+  currentAdmin = user;
+  loadUsers();
+  loadRecentTopups();
+});
 
-  const userSelect = document.getElementById("userSelect");
-  const topupAmount = document.getElementById("topupAmount");
-  const topupBtn = document.getElementById("topupBtn");
-  const logoutBtn = document.getElementById("logoutBtn");
-  const topupTable = document.getElementById("topupTable");
+// ========== LOAD USERS ==========
+async function loadUsers() {
+  const snapshot = await db.collection("users").get();
+  userSelect.innerHTML = "";
+  snapshot.forEach(doc => {
+    const u = doc.data();
+    const opt = document.createElement("option");
+    opt.value = doc.id;
+    opt.textContent = `${u.fullName} — ₱${u.balance}`;
+    userSelect.appendChild(opt);
+  });
+}
 
-  let currentAdmin = null;
+// ========== LOAD LAST 10 TOP-UPS ==========
+async function loadRecentTopups() {
+  const q = db.collection("topups").orderBy("timestamp", "desc").limit(10);
+  const snap = await q.get();
+  topupTable.innerHTML = "";
 
-  // ========== AUTH LISTENER ==========
-  firebase.onAuthStateChanged(auth, user => {
-    if (!user) {
-      window.location = "index.html";
-      return;
-    }
-    currentAdmin = user;
-    loadUsers();
-    loadRecentTopups();
+  snap.forEach(doc => {
+    const d = doc.data();
+    topupTable.innerHTML += `
+      <tr>
+        <td class="p-2 border">${d.userEmail}</td>
+        <td class="p-2 border">₱${d.amount}</td>
+        <td class="p-2 border">${d.adminEmail}</td>
+        <td class="p-2 border">${new Date(d.timestamp).toLocaleString()}</td>
+      </tr>`;
+  });
+}
+
+// ========== TOPUP BUTTON (FULL SYNC) ==========
+topupBtn.onclick = async () => {
+  const uid = userSelect.value;
+  const amt = parseInt(topupAmount.value);
+
+  if (!uid || amt <= 0) return alert("Invalid input.");
+
+  const userRef = db.doc(`users/${uid}`);
+  const snap = await userRef.get();
+  const u = snap.data();
+
+  const newBalance = (u.balance ?? 0) + amt;
+
+  // 1) Update USERS
+  await userRef.update({ balance: newBalance });
+
+  // 2) Update RFID USERS
+  if (u.rfid) {
+    await db.doc(`rfidUsers/${u.rfid}`).update({ balance: newBalance });
+  }
+
+  // 3) Log top-up
+  await db.collection("topups").add({
+    userId: uid,
+    userEmail: u.email,
+    amount: amt,
+    adminEmail: currentAdmin.email,
+    timestamp: Date.now()
   });
 
-  // ========== LOAD USERS ==========
-  async function loadUsers() {
-    const usersRef = firebase.collection(db, "users");
-    const snapshot = await firebase.getDocs(usersRef);
+  alert("Top-up complete!");
+  topupAmount.value = "";
+  loadUsers();
+  loadRecentTopups();
+};
 
-    userSelect.innerHTML = "";
-
-    snapshot.forEach(doc => {
-      const d = doc.data();
-      const option = document.createElement("option");
-      option.value = doc.id;
-      option.textContent = `${d.fullName} — ₱${d.balance ?? 0}`;
-      userSelect.appendChild(option);
-    });
-  }
-
-  // ========== LOAD TOP-UP HISTORY ==========
-  async function loadRecentTopups() {
-    topupTable.innerHTML = "";
-
-    const q = firebase.query(
-      firebase.collection(db, "topups"),
-      firebase.orderBy("timestamp", "desc"),
-      firebase.limit(10)
-    );
-
-    const snapshot = await firebase.getDocs(q);
-
-    snapshot.forEach(doc => {
-      const d = doc.data();
-      const tr = document.createElement("tr");
-
-      tr.innerHTML = `
-        <td class="border p-2">${d.userEmail || d.userId}</td>
-        <td class="border p-2">₱${d.amount}</td>
-        <td class="border p-2">${d.adminEmail}</td>
-        <td class="border p-2">${new Date(d.timestamp).toLocaleString()}</td>
-      `;
-
-      topupTable.appendChild(tr);
-    });
-  }
-
-  // ============================================================
-  // 🔥 UPDATED TOP-UP LOGIC — NOW SYNC USERS + RFIDUSERS
-  // ============================================================
-
-  topupBtn.onclick = async () => {
-    const uid = userSelect.value;
-    const amt = parseInt(topupAmount.value, 10);
-
-    if (!uid) {
-      alert("Select a user first.");
-      return;
-    }
-    if (!amt || amt <= 0) {
-      alert("Enter a valid top-up amount.");
-      return;
-    }
-
-    try {
-      const userRef = firebase.doc(db, "users", uid);
-      const userSnap = await firebase.getDoc(userRef);
-
-      if (!userSnap.exists()) {
-        alert("User not found!");
-        return;
-      }
-
-      const userData = userSnap.data();
-      const currentBalance = userData.balance ?? 0;
-      const newBalance = currentBalance + amt;
-      const rfid = userData.rfid || null;
-
-      // 1️⃣ Update USERS balance
-      await firebase.updateDoc(userRef, { balance: newBalance });
-
-      // 2️⃣ Update RFID USERS balance (if rfid exists)
-      if (rfid) {
-        const rfidRef = firebase.doc(db, "rfidUsers", rfid);
-        await firebase.updateDoc(rfidRef, { balance: newBalance });
-      }
-
-      // 3️⃣ Log the top-up
-      await firebase.addDoc(firebase.collection(db, "topups"), {
-        userId: uid,
-        userEmail: userData.email || "",
-        amount: amt,
-        adminId: currentAdmin.uid,
-        adminEmail: currentAdmin.email,
-        timestamp: Date.now()
-      });
-
-      alert("Top-up successful!");
-
-      topupAmount.value = "";
-      await loadUsers();
-      await loadRecentTopups();
-
-    } catch (err) {
-      console.error(err);
-      alert("Top-up failed: " + err.message);
-    }
-  };
-
-  // ========== LOGOUT ==========
-  logoutBtn.onclick = async () => {
-    await firebase.signOut(auth);
-    window.location = "index.html";
-  };
+logoutBtn.onclick = () => auth.signOut().then(() => location = "index.html");
 </script>
 
 </body>

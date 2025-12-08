@@ -6,10 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+  <!-- Firebase COMPAT MODE -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
   <script src="firebase-config.js"></script>
 </head>
 
@@ -18,31 +19,31 @@
   <div class="bg-white p-8 rounded shadow max-w-sm w-full">
     <h1 class="text-xl font-bold text-green-700">CampusTap Login</h1>
 
-    <input id="email" type="email" placeholder="Email" class="border p-2 w-full mt-4 rounded" />
-    <input id="password" type="password" placeholder="Password" class="border p-2 w-full mt-2 rounded" />
+    <input id="email" type="email" placeholder="Email"
+      class="border p-2 w-full mt-4 rounded" />
+    <input id="password" type="password" placeholder="Password"
+      class="border p-2 w-full mt-2 rounded" />
 
-    <button id="loginBtn" class="bg-green-700 text-white w-full mt-4 p-2 rounded">Login</button>
+    <button id="loginBtn"
+      class="bg-green-700 text-white w-full mt-4 p-2 rounded">Login</button>
 
     <p id="errorBox" class="text-red-600 mt-3 hidden"></p>
   </div>
 
 <script>
-const auth = firebase.getAuth();
-
-firebase.onAuthStateChanged(auth, user => {
+auth.onAuthStateChanged(user => {
   if (user) window.location = "campustap.html";
 });
 
-document.getElementById("loginBtn").onclick = async () => {
-  const email = document.getElementById("email").value;
-  const pass = document.getElementById("password").value;
+document.getElementById("loginBtn").onclick = () => {
+  const email = email.value;
+  const pass = password.value;
 
-  try {
-    await firebase.signInWithEmailAndPassword(auth, email, pass);
-  } catch (e) {
-    document.getElementById("errorBox").textContent = e.message;
-    document.getElementById("errorBox").classList.remove("hidden");
-  }
+  auth.signInWithEmailAndPassword(email, pass)
+    .catch(e => {
+      errorBox.textContent = e.message;
+      errorBox.classList.remove("hidden");
+    });
 };
 </script>
 

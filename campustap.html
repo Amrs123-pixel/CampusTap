@@ -1,16 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>CampusTap Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js"></script>
+  <!-- Firebase COMPAT MODE -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
   <script src="firebase-config.js"></script>
 </head>
 
@@ -23,19 +25,16 @@
 
 <main class="max-w-4xl mx-auto mt-6">
 
-  <!-- BALANCE CARD -->
   <div class="bg-white text-gray-900 p-6 rounded shadow">
     <h2 class="text-xl font-bold text-green-700">Your Balance</h2>
     <p id="balanceBox" class="text-3xl font-bold mt-2">₱0</p>
   </div>
 
-  <!-- RFID CARD -->
   <div class="bg-white text-gray-900 p-6 rounded shadow mt-6">
     <h2 class="text-xl font-bold text-green-700">Your RFID</h2>
     <p id="rfidBox" class="text-lg font-bold mt-2"></p>
   </div>
 
-  <!-- RIDE COUNT -->
   <div class="bg-white text-gray-900 p-6 rounded shadow mt-6">
     <h2 class="text-xl font-bold text-green-700">Total Rides</h2>
     <p id="rideCount" class="text-3xl font-bold mt-2">0</p>
@@ -44,37 +43,25 @@
 </main>
 
 <script>
-const auth = firebase.getAuth();
-const db = firebase.getFirestore();
-const rtdb = firebase.getDatabase();
+auth.onAuthStateChanged(async user => {
+  if (!user) return window.location = "index.html";
 
-firebase.onAuthStateChanged(auth, async user => {
-  if (!user) return (window.location = "index.html");
+  const userRef = db.doc(`users/${user.uid}`);
 
-  const userRef = firebase.doc(db, "users", user.uid);
-  firebase.onSnapshot(userRef, snap => {
+  userRef.onSnapshot(snap => {
     const d = snap.data();
-    if (!d) return;
-    document.getElementById("balanceBox").textContent = "₱" + (d.balance ?? 0);
-    document.getElementById("rfidBox").textContent = d.rfid ?? "No RFID linked";
+    balanceBox.textContent = "₱" + (d.balance ?? 0);
+    rfidBox.textContent = d.rfid ?? "No RFID linked";
   });
 
-  // Count rides
-  const q = firebase.query(
-    firebase.collection(db, "rides"),
-    firebase.where("userId", "==", user.uid)
-  );
+  const ridesQuery = db.collection("rides").where("userId", "==", user.uid);
 
-  firebase.onSnapshot(q, rideSnap => {
-    document.getElementById("rideCount").textContent = rideSnap.size;
+  ridesQuery.onSnapshot(snap => {
+    rideCount.textContent = snap.size;
   });
-
 });
 
-document.getElementById("logoutBtn").onclick = async () => {
-  await firebase.signOut(auth);
-  window.location = "index.html";
-};
+logoutBtn.onclick = () => auth.signOut().then(() => location = "index.html");
 </script>
 
 </body>
