@@ -44,7 +44,7 @@
 
 <script>
 auth.onAuthStateChanged(async user => {
-  if (!user) return window.location = "index.html";
+  if (!user) return location = "index.html";
 
   const userRef = db.doc(`users/${user.uid}`);
 
@@ -54,11 +54,9 @@ auth.onAuthStateChanged(async user => {
     rfidBox.textContent = d.rfid ?? "No RFID linked";
   });
 
-  const ridesQuery = db.collection("rides").where("userId", "==", user.uid);
-
-  ridesQuery.onSnapshot(snap => {
-    rideCount.textContent = snap.size;
-  });
+  db.collection("rides")
+    .where("userId", "==", user.uid)
+    .onSnapshot(snap => rideCount.textContent = snap.size);
 });
 
 logoutBtn.onclick = () => auth.signOut().then(() => location = "index.html");

@@ -11,6 +11,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
   <script src="firebase-config.js"></script>
 </head>
@@ -49,8 +50,7 @@
 auth.onAuthStateChanged(user => {
   if (!user) return location = "index.html";
 
-  const userRef = db.doc(`users/${user.uid}`);
-  userRef.onSnapshot(doc => {
+  db.doc(`users/${user.uid}`).onSnapshot(doc => {
     const d = doc.data();
     balanceBox.textContent = "₱" + (d.balance ?? 0);
     rfidBox.textContent = d.rfid ?? "No RFID linked";
