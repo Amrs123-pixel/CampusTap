@@ -2,226 +2,80 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CampusTap — Map & Ride History</title>
+  <title>CampusTap Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <style>
-    #map {
-      width: 100%;
-      height: 320px;
-      border-radius: 10px;
-    }
-    .card {
-      max-width: 900px;
-      margin: 20px auto;
-      background: #ffffff;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-    }
-    .ride-history-table {
-      max-height: 260px;
-      overflow-y: auto;
-      border-radius: 8px;
-      border: 1px solid #ddd;
-    }
-    .ride-history-table table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    .ride-history-table th {
-      background: #0f6938;
-      color: white;
-      padding: 8px;
-      position: sticky;
-      top: 0;
-    }
-    .ride-history-table td {
-      padding: 8px;
-      border-bottom: 1px solid #eee;
-      font-size: 0.9rem;
-    }
-  </style>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js"></script>
+  <script src="firebase-config.js"></script>
 </head>
 
-<body class="bg-green-700 min-h-screen">
-  <!-- NAVBAR -->
-  <nav class="bg-white shadow p-4 flex justify-between items-center">
-    <h1 class="text-xl font-bold text-green-700">🚍 CampusTap</h1>
-    <div class="space-x-4 text-sm">
-      <a href="campustap.html" class="text-green-700 font-semibold">Map &amp; History</a>
-      <a href="about.html" class="text-green-700 font-semibold">About</a>
-      <a href="account.html" class="text-green-700 font-semibold">Account</a>
-      <a href="admin.html" id="adminTab" class="text-green-700 font-semibold hidden">Admin</a>
-      <button id="logoutBtn" class="bg-red-600 text-white px-3 py-1 rounded">Logout</button>
-    </div>
-  </nav>
+<body class="bg-green-700 min-h-screen text-white">
 
-  <!-- MAP + BALANCE -->
-  <section class="card">
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-3">
-      <div>
-        <h2 class="text-green-700 text-lg font-bold">📍 Shuttle Live Location</h2>
-        <p class="text-xs text-gray-500">Location updates in real time from the shuttle GPS.</p>
-      </div>
-      <div class="bg-green-50 border border-green-200 px-4 py-2 rounded text-right">
-        <div class="text-xs text-gray-600">Current Balance</div>
-        <div id="balance" class="text-xl font-bold text-green-700">₱—</div>
-      </div>
-    </div>
-    <div id="map"></div>
-  </section>
+<nav class="bg-white p-4 text-green-700 flex justify-between">
+  <h1 class="font-bold text-lg">CampusTap Dashboard</h1>
+  <button id="logoutBtn" class="px-3 py-1 bg-green-700 text-white rounded">Logout</button>
+</nav>
 
-  <!-- RIDE HISTORY -->
-  <section class="card">
-    <h2 class="text-green-700 text-lg font-bold mb-2">🧾 Ride History (RFID Taps)</h2>
-    <p class="text-xs text-gray-500 mb-2">
-      These rides are loaded from Firestore and written by the ESP32 for each RFID tap.
-    </p>
+<main class="max-w-4xl mx-auto mt-6">
 
-    <div class="ride-history-table">
-      <table>
-        <thead>
-          <tr>
-            <th class="text-left">Date / Time</th>
-            <th class="text-left">Route</th>
-            <th class="text-left">Fare</th>
-          </tr>
-        </thead>
-        <tbody id="rideHistoryBody"></tbody>
-      </table>
-    </div>
-  </section>
+  <!-- BALANCE CARD -->
+  <div class="bg-white text-gray-900 p-6 rounded shadow">
+    <h2 class="text-xl font-bold text-green-700">Your Balance</h2>
+    <p id="balanceBox" class="text-3xl font-bold mt-2">₱0</p>
+  </div>
 
-  <!-- FIREBASE MODULE -->
-  <script type="module">
-    import { auth, db, rtdb } from "./firebase-config.js";
-    import {
-      onAuthStateChanged,
-      signOut
-    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-    import {
-      doc,
-      onSnapshot,
-      collection,
-      query,
-      where,
-      orderBy
-    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-    import {
-      ref,
-      onValue
-    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+  <!-- RFID CARD -->
+  <div class="bg-white text-gray-900 p-6 rounded shadow mt-6">
+    <h2 class="text-xl font-bold text-green-700">Your RFID</h2>
+    <p id="rfidBox" class="text-lg font-bold mt-2"></p>
+  </div>
 
-    const adminTab = document.getElementById("adminTab");
-    const logoutBtn = document.getElementById("logoutBtn");
-    const balanceEl = document.getElementById("balance");
-    const ridesTbody = document.getElementById("rideHistoryBody");
+  <!-- RIDE COUNT -->
+  <div class="bg-white text-gray-900 p-6 rounded shadow mt-6">
+    <h2 class="text-xl font-bold text-green-700">Total Rides</h2>
+    <p id="rideCount" class="text-3xl font-bold mt-2">0</p>
+  </div>
 
-    logoutBtn.onclick = () => signOut(auth);
+</main>
 
-    onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        location.href = "index.html";
-        return;
-      }
+<script>
+const auth = firebase.getAuth();
+const db = firebase.getFirestore();
+const rtdb = firebase.getDatabase();
 
-      // --- USER PROFILE (BALANCE + ROLE) ---
-      const userRef = doc(db, "users", user.uid);
-      onSnapshot(userRef, (snap) => {
-        if (!snap.exists()) return;
-        const data = snap.data();
-        balanceEl.textContent = "₱" + (data.balance ?? 0);
-        if (data.role === "admin") adminTab.classList.remove("hidden");
-      });
+firebase.onAuthStateChanged(auth, async user => {
+  if (!user) return (window.location = "index.html");
 
-      // --- RIDE HISTORY ---
-      const ridesRef = collection(db, "rides");
-      const qRides = query(
-        ridesRef,
-        where("userId", "==", user.uid),
-        orderBy("timestamp", "desc")
-      );
+  const userRef = firebase.doc(db, "users", user.uid);
+  firebase.onSnapshot(userRef, snap => {
+    const d = snap.data();
+    if (!d) return;
+    document.getElementById("balanceBox").textContent = "₱" + (d.balance ?? 0);
+    document.getElementById("rfidBox").textContent = d.rfid ?? "No RFID linked";
+  });
 
-      onSnapshot(qRides, (qs) => {
-        ridesTbody.innerHTML = "";
+  // Count rides
+  const q = firebase.query(
+    firebase.collection(db, "rides"),
+    firebase.where("userId", "==", user.uid)
+  );
 
-        if (qs.empty) {
-          ridesTbody.innerHTML = `
-            <tr><td colspan="3" class="text-center text-gray-500 text-xs py-3">
-              No rides recorded yet.
-            </td></tr>`;
-          return;
-        }
+  firebase.onSnapshot(q, rideSnap => {
+    document.getElementById("rideCount").textContent = rideSnap.size;
+  });
 
-        qs.forEach(docSnap => {
-          const r = docSnap.data();
+});
 
-          // PARSE TIMESTAMP (Firestore or string)
-          let displayTime = "—";
-
-          if (r.timestamp?.toDate) {
-            displayTime = r.timestamp.toDate().toLocaleString();
-          } else if (typeof r.timestamp === "string") {
-            const d = new Date(r.timestamp);
-            if (!isNaN(d)) displayTime = d.toLocaleString();
-          }
-
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td>${displayTime}</td>
-            <td>${r.route || "USC Talamban Loop"}</td>
-            <td>₱${r.fare ?? 10}</td>
-          `;
-          ridesTbody.appendChild(tr);
-        });
-      });
-
-      // --- LIVE GPS SHUTTLE POSITION ---
-      const shuttleRef = ref(rtdb, "shuttle/shuttle1");
-      onValue(shuttleRef, (snap) => {
-        const d = snap.val();
-        if (!d) return;
-
-        if (typeof d.lat !== "number" || typeof d.lng !== "number") return;
-        if (d.lat === 0 || d.lng === 0) return;
-
-        if (window.setShuttlePosition) {
-          window.setShuttlePosition({ lat: d.lat, lng: d.lng });
-        }
-      });
-    });
-  </script>
-
-  <!-- GOOGLE MAPS -->
-  <script>
-    let map, shuttleMarker;
-
-    function initMap() {
-      const uscTalamban = { lat: 10.3541, lng: 123.9114 };
-
-      map = new google.maps.Map(document.getElementById("map"), {
-        zoom: 16,
-        center: uscTalamban
-      });
-
-      shuttleMarker = new google.maps.Marker({
-        map,
-        position: uscTalamban,
-        title: "Shuttle"
-      });
-    }
-
-    window.setShuttlePosition = function (pos) {
-      if (!map || !shuttleMarker) return;
-      shuttleMarker.setPosition(pos);
-      map.setCenter(pos);
-    };
-  </script>
-
-  <!-- GOOGLE MAPS API -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA6OmfsgRx-D6dN2Mto5Btczi8A64ReQJg&callback=initMap" async defer></script>
+document.getElementById("logoutBtn").onclick = async () => {
+  await firebase.signOut(auth);
+  window.location = "index.html";
+};
+</script>
 
 </body>
 </html>

@@ -2,145 +2,85 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CampusTap — Account</title>
+  <title>Your Account</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+  <script src="firebase-config.js"></script>
 </head>
-<body class="bg-green-700 min-h-screen">
-  <!-- NAVBAR -->
-  <nav class="bg-white shadow p-4 flex justify-between items-center">
-    <h1 class="text-xl font-bold text-green-700">🚍 CampusTap</h1>
-    <div class="space-x-4 text-sm">
-      <a href="campustap.html" class="text-green-700 font-semibold">Map &amp; History</a>
-      <a href="about.html" class="text-green-700 font-semibold">About</a>
-      <a href="account.html" class="text-green-700 font-semibold">Account</a>
-      <a href="admin.html" id="adminTab" class="text-green-700 font-semibold hidden">Admin</a>
-      <button id="logoutBtn" class="bg-red-600 text-white px-3 py-1 rounded">Logout</button>
-    </div>
-  </nav>
 
-  <main class="max-w-4xl mx-auto p-4 space-y-6">
-    <!-- PROFILE CARD -->
-    <section class="bg-white rounded-xl shadow p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-      <div>
-        <h2 class="text-lg font-bold text-green-700 mb-1">👤 Account Overview</h2>
-        <p class="text-xs text-gray-500">Linked to your CampusTap login account.</p>
-        <div class="mt-3 text-sm">
-          <div><span class="font-semibold text-gray-700">Name:</span> <span id="accName">—</span></div>
-          <div><span class="font-semibold text-gray-700">Email:</span> <span id="accEmail">—</span></div>
-          <div><span class="font-semibold text-gray-700">Role:</span> <span id="accRole">—</span></div>
-        </div>
-      </div>
-      <div class="bg-green-50 border border-green-200 rounded-lg px-5 py-3 text-right">
-        <div class="text-xs text-gray-600">Account Balance</div>
-        <div id="accBalance" class="text-2xl font-bold text-green-700">₱—</div>
-      </div>
-    </section>
+<body class="bg-green-700 min-h-screen text-white">
 
-    <!-- RIDE HISTORY -->
-    <section class="bg-white rounded-xl shadow p-5">
-      <h2 class="text-lg font-bold text-green-700 mb-2">🧾 Your Ride History</h2>
-      <p class="text-xs text-gray-500 mb-3">
-        These entries represent rides taken using your account or RFID card.
-      </p>
-      <div class="border rounded-lg max-h-300 overflow-y-auto">
-        <table class="w-full text-sm">
-          <thead class="bg-green-700 text-white sticky top-0">
-            <tr>
-              <th class="text-left px-2 py-1">Date / Time</th>
-              <th class="text-left px-2 py-1">Route</th>
-              <th class="text-left px-2 py-1">Fare</th>
-            </tr>
-          </thead>
-          <tbody id="accRidesBody"></tbody>
-        </table>
-      </div>
-    </section>
-  </main>
+<nav class="bg-white p-4 text-green-700">
+  <a href="campustap.html" class="font-bold">&larr; Back to Dashboard</a>
+</nav>
 
-  <script type="module">
-    import { auth, db } from "./firebase-config.js";
-    import {
-      onAuthStateChanged,
-      signOut
-    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-    import {
-      doc,
-      onSnapshot,
-      collection,
-      query,
-      where,
-      orderBy
-    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+<main class="max-w-4xl mx-auto p-6 bg-white text-gray-900 mt-6 rounded shadow">
 
-    const adminTab     = document.getElementById("adminTab");
-    const logoutBtn    = document.getElementById("logoutBtn");
-    const accNameEl    = document.getElementById("accName");
-    const accEmailEl   = document.getElementById("accEmail");
-    const accRoleEl    = document.getElementById("accRole");
-    const accBalanceEl = document.getElementById("accBalance");
-    const accRidesBody = document.getElementById("accRidesBody");
+  <h1 class="text-2xl font-bold text-green-700">Your Account</h1>
 
-    logoutBtn.onclick = () => signOut(auth);
+  <div class="mt-4">
+    <p class="text-lg"><b>Balance:</b> <span id="balanceBox">₱0</span></p>
+    <p class="text-lg"><b>RFID:</b> <span id="rfidBox">Loading...</span></p>
+  </div>
 
-    onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        location.href = "index.html";
-        return;
-      }
+  <h2 class="text-xl mt-6 font-bold text-green-700">Ride History</h2>
 
-      // Watch user profile
-      const userRef = doc(db, "users", user.uid);
-      onSnapshot(userRef, (snap) => {
-        if (!snap.exists()) return;
-        const u = snap.data();
-        accNameEl.textContent    = u.fullName || "—";
-        accEmailEl.textContent   = u.email || user.email;
-        accRoleEl.textContent    = u.role || "student";
-        accBalanceEl.textContent = "₱" + (u.balance ?? 0);
+  <table class="w-full mt-2 border">
+    <thead class="bg-green-700 text-white">
+      <tr>
+        <th class="p-2 border">Timestamp</th>
+        <th class="p-2 border">Route</th>
+        <th class="p-2 border">Fare</th>
+      </tr>
+    </thead>
+    <tbody id="rideTable"></tbody>
+  </table>
 
-        if (u.role === "admin") {
-          adminTab.classList.remove("hidden");
-        }
-      });
+</main>
 
-      // Watch rides for this user
-      const ridesRef = collection(db, "rides");
-      const qRides = query(
-        ridesRef,
-        where("userId", "==", user.uid),
-        orderBy("timestamp", "desc")
-      );
+<script>
+const auth = firebase.getAuth();
+const db = firebase.getFirestore();
 
-      onSnapshot(qRides, (qs) => {
-        accRidesBody.innerHTML = "";
-        qs.forEach((snap) => {
-          const r = snap.data();
-          const dateStr =
-            r.time ||
-            (r.timestamp ? new Date(r.timestamp).toLocaleString() : "");
-          const route = r.route || "USC Talamban Loop";
-          const fare  = r.fare ?? 10;
+firebase.onAuthStateChanged(auth, user => {
+  if (!user) return (window.location = "index.html");
 
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td class="px-2 py-1 border-b">${dateStr}</td>
-            <td class="px-2 py-1 border-b">${route}</td>
-            <td class="px-2 py-1 border-b">₱${fare}</td>
-          `;
-          accRidesBody.appendChild(tr);
-        });
+  const userRef = firebase.doc(db, "users", user.uid);
 
-        if (qs.empty) {
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td colspan="3" class="text-center text-xs text-gray-500 py-3">
-              No rides found for this account.
-            </td>`;
-          accRidesBody.appendChild(tr);
-        }
-      });
+  firebase.onSnapshot(userRef, snap => {
+    const d = snap.data();
+    document.getElementById('balanceBox').textContent = "₱" + (d.balance ?? 0);
+    document.getElementById('rfidBox').textContent = d.rfid ?? "Not linked";
+  });
+
+  const q = firebase.query(
+    firebase.collection(db, "rides"),
+    firebase.where("userId", "==", user.uid),
+    firebase.orderBy("timestamp", "desc")
+  );
+
+  firebase.onSnapshot(q, snapshot => {
+    const tbody = document.getElementById("rideTable");
+    tbody.innerHTML = "";
+
+    snapshot.forEach(doc => {
+      const d = doc.data();
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="p-2 border">${new Date(d.timestamp).toLocaleString()}</td>
+        <td class="p-2 border">${d.route}</td>
+        <td class="p-2 border">₱${d.fare}</td>
+      `;
+      tbody.appendChild(tr);
     });
-  </script>
+  });
+});
+</script>
+
 </body>
 </html>

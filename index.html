@@ -2,179 +2,49 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CampusTap — Login</title>
+  <title>CampusTap Login</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <style>
-    body {
-      background: #0f6938;
-    }
-  </style>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+  <script src="firebase-config.js"></script>
 </head>
 
-<body class="min-h-screen flex items-center justify-center p-4">
+<body class="bg-green-700 min-h-screen flex items-center justify-center">
 
-  <div class="bg-white w-full max-w-md rounded-xl shadow-lg p-6">
-    <h1 class="text-2xl font-bold text-center text-green-700 mb-1">
-      🚍 CampusTap
-    </h1>
-    <p class="text-xs text-center text-gray-500 mb-6">
-      USC shuttle tracking with RFID payment & real-time GPS
-    </p>
+  <div class="bg-white p-8 rounded shadow max-w-sm w-full">
+    <h1 class="text-xl font-bold text-green-700">CampusTap Login</h1>
 
-    <!-- LOGIN FORM -->
-    <form id="loginForm" class="space-y-4">
-      <div>
-        <label class="text-sm font-semibold text-gray-700">Email</label>
-        <input id="loginEmail" type="email" required
-          class="w-full p-2 border rounded-md" placeholder="example@usc.edu.ph" />
-      </div>
+    <input id="email" type="email" placeholder="Email" class="border p-2 w-full mt-4 rounded" />
+    <input id="password" type="password" placeholder="Password" class="border p-2 w-full mt-2 rounded" />
 
-      <div>
-        <label class="text-sm font-semibold text-gray-700">Password</label>
-        <input id="loginPassword" type="password" required
-          class="w-full p-2 border rounded-md" placeholder="••••••••" />
-      </div>
+    <button id="loginBtn" class="bg-green-700 text-white w-full mt-4 p-2 rounded">Login</button>
 
-      <button type="submit"
-        class="w-full bg-green-700 text-white py-2 rounded-md font-semibold hover:bg-green-800">
-        Login
-      </button>
-    </form>
-
-    <p class="text-center text-gray-600 mt-4 text-sm">
-      No account?
-      <button id="openRegister" class="text-green-700 font-semibold">
-        Register
-      </button>
-    </p>
+    <p id="errorBox" class="text-red-600 mt-3 hidden"></p>
   </div>
 
-  <!-- REGISTER MODAL -->
-  <div id="registerModal"
-       class="fixed hidden inset-0 bg-black bg-opacity-40 flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-md p-6 rounded-xl shadow-xl">
-      <h2 class="text-xl font-bold text-green-700 text-center mb-4">Create Account</h2>
+<script>
+const auth = firebase.getAuth();
 
-      <form id="registerForm" class="space-y-4">
-        <div>
-          <label class="text-sm font-semibold">Full Name</label>
-          <input id="regName" class="w-full p-2 border rounded-md" required />
-        </div>
+firebase.onAuthStateChanged(auth, user => {
+  if (user) window.location = "campustap.html";
+});
 
-        <div>
-          <label class="text-sm font-semibold">Email</label>
-          <input id="regEmail" type="email" class="w-full p-2 border rounded-md" required />
-        </div>
+document.getElementById("loginBtn").onclick = async () => {
+  const email = document.getElementById("email").value;
+  const pass = document.getElementById("password").value;
 
-        <div>
-          <label class="text-sm font-semibold">Password</label>
-          <input id="regPassword" type="password" class="w-full p-2 border rounded-md" required />
-        </div>
-
-        <button type="submit"
-          class="w-full bg-green-700 text-white py-2 rounded-md font-semibold hover:bg-green-800">
-          Register
-        </button>
-
-        <button id="closeRegister" type="button"
-          class="w-full mt-2 bg-gray-300 text-black py-2 rounded-md">
-          Cancel
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <!-- FIREBASE LOGIC -->
-  <script type="module">
-    import { auth, db } from "./firebase-config.js";
-    import {
-      signInWithEmailAndPassword,
-      createUserWithEmailAndPassword
-    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-    import {
-      doc,
-      setDoc
-    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-
-    // ====== DOM ELEMENTS ======
-    const loginForm = document.getElementById("loginForm");
-    const loginEmailInput = document.getElementById("loginEmail");
-    const loginPasswordInput = document.getElementById("loginPassword");
-
-    const registerModal = document.getElementById("registerModal");
-    const openRegisterBtn = document.getElementById("openRegister");
-    const closeRegisterBtn = document.getElementById("closeRegister");
-    const registerForm = document.getElementById("registerForm");
-
-    const regNameInput = document.getElementById("regName");
-    const regEmailInput = document.getElementById("regEmail");
-    const regPasswordInput = document.getElementById("regPassword");
-
-    // ====== MODAL CONTROL ======
-    openRegisterBtn.onclick = () => {
-      registerModal.classList.remove("hidden");
-    };
-
-    closeRegisterBtn.onclick = () => {
-      registerModal.classList.add("hidden");
-    };
-
-    // ====== LOGIN HANDLER ======
-    loginForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      const email = loginEmailInput.value.trim();
-      const password = loginPasswordInput.value;
-
-      try {
-        await signInWithEmailAndPassword(auth, email, password);
-        // Redirect to main map page
-        window.location.href = "campustap.html";
-      } catch (err) {
-        console.error(err);
-        alert("Login failed: " + err.message);
-      }
-    });
-
-    // ====== REGISTER HANDLER ======
-    registerForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      const name = regNameInput.value.trim();
-      const email = regEmailInput.value.trim();
-      const password = regPasswordInput.value;
-
-      if (!name || !email || !password) {
-        alert("Please fill all fields.");
-        return;
-      }
-
-      try {
-        // Create auth account
-        const cred = await createUserWithEmailAndPassword(auth, email, password);
-
-        const isAdmin = email.toLowerCase().endsWith("@usc.edu.ph");
-
-        // Create Firestore user profile
-        await setDoc(doc(db, "users", cred.user.uid), {
-          fullName: name,
-          email: email,
-          balance: 0,
-          role: isAdmin ? "admin" : "student",
-          createdAt: Date.now()
-        });
-
-        alert("Registration successful! You can now log in.");
-        registerModal.classList.add("hidden");
-
-      } catch (err) {
-        console.error(err);
-        alert("Registration error: " + err.message);
-      }
-    });
-  </script>
+  try {
+    await firebase.signInWithEmailAndPassword(auth, email, pass);
+  } catch (e) {
+    document.getElementById("errorBox").textContent = e.message;
+    document.getElementById("errorBox").classList.remove("hidden");
+  }
+};
+</script>
 
 </body>
 </html>
