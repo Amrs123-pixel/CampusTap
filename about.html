@@ -2,14 +2,28 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>About CampusTap</title>
+  <title>ℹ️ About CampusTap</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <!-- Modern Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <script src="https://cdn.tailwindcss.com"></script>
   
   <style>
+    :root {
+      --primary-green: #15803d;
+      --light-green: #16a34a;
+      --gradient-start: #059669;
+      --gradient-end: #15803d;
+    }
+    
     /* Page transition animation */
     body {
       animation: fadeIn 0.5s ease-in;
+      background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
     }
     
     @keyframes fadeIn {
@@ -22,33 +36,136 @@
         transform: translateY(0);
       }
     }
+    
+    /* Modern button styles */
+    .modern-btn {
+      transition: all 0.3s ease;
+      font-family: 'Inter', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    @media (hover: hover) and (pointer: fine) {
+      .modern-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+    }
+    
+    /* Mobile-friendly touch targets */
+    @media (max-width: 768px) {
+      .modern-btn {
+        min-height: 44px;
+        padding: 0.75rem 1rem;
+      }
+    }
+    
+    .feature-card {
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    @media (hover: hover) and (pointer: fine) {
+      .feature-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      }
+    }
   </style>
 </head>
 
-<body class="bg-green-700 min-h-screen text-gray-900">
-<nav class="bg-white shadow p-4 flex justify-between items-center">
-  <a href="campustap.html" class="px-3 py-1 bg-green-700 text-white rounded hover:bg-green-800">Dashboard</a>
-  <a href="index.html" class="text-green-700 font-bold">Back to Login</a>
+<body class="bg-green-700 min-h-screen text-white">
+<nav class="bg-white/95 backdrop-blur-sm p-3 sm:p-5 text-green-700 flex flex-wrap justify-between items-center shadow-lg sticky top-0 z-50 gap-2">
+  <div class="flex items-center gap-2 sm:gap-4">
+    <h1 class="font-bold text-lg sm:text-2xl tracking-tight flex items-center">🚍 CampusTap</h1>
+  </div>
+  <div class="flex items-center gap-2">
+    <a href="campustap.html" class="modern-btn px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 font-medium shadow-md text-sm sm:text-base flex items-center">📊 Dashboard</a>
+    <a href="index.html" class="modern-btn px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-gray-100 to-gray-200 text-green-700 rounded-lg hover:from-gray-200 hover:to-gray-300 font-medium text-sm sm:text-base flex items-center">🔐 Login</a>
+  </div>
 </nav>
 
-<main class="max-w-3xl mx-auto p-6 bg-white rounded shadow mt-6">
-  <h1 class="text-2xl text-green-700 font-bold">About CampusTap</h1>
+<main class="max-w-5xl mx-auto mt-4 sm:mt-8 px-3 sm:px-4 pb-8 sm:pb-12">
+  
+  <!-- Hero Section -->
+  <div class="bg-white/95 backdrop-blur-sm text-gray-900 p-6 sm:p-10 rounded-2xl shadow-xl mb-6 sm:mb-8">
+    <h1 class="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent mb-4">ℹ️ About CampusTap</h1>
+    <p class="text-base sm:text-lg text-gray-700 leading-relaxed">
+      CampusTap is an innovative project reimagining campus mobility through technology.
+      Created as a thesis project by students from the University of San Carlos, it provides
+      a <span class="font-semibold text-green-700">cashless, real-time shuttle tracking and ride logging system</span>.
+    </p>
+  </div>
 
-  <p class="mt-4">
-    CampusTap is an innovative project reimagining campus mobility through technology.
-    Created as a thesis project by students from the University of San Carlos, it provides
-    a cashless, real-time shuttle tracking and ride logging system.
-  </p>
+  <!-- Mission Section -->
+  <div class="feature-card bg-gradient-to-br from-white to-green-50 text-gray-900 p-6 sm:p-8 rounded-2xl shadow-xl border border-green-100 mb-6 sm:mb-8">
+    <h2 class="text-2xl sm:text-3xl font-bold text-green-700 mb-4 flex items-center gap-2">
+      🎯 Our Mission
+    </h2>
+    <p class="text-base sm:text-lg text-gray-700 leading-relaxed">
+      To improve student transportation with real-time tracking and cashless convenience, 
+      making campus commuting safer, more efficient, and more accessible for everyone.
+    </p>
+  </div>
 
-  <h2 class="mt-4 font-bold text-green-700">Our Mission</h2>
-  <p>To improve student transportation with real-time tracking and cashless convenience.</p>
+  <!-- Features Section -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+    <div class="feature-card bg-white p-6 rounded-2xl shadow-xl">
+      <div class="text-4xl mb-3">🚍</div>
+      <h3 class="text-xl font-bold text-green-700 mb-2">Real-time Tracking</h3>
+      <p class="text-gray-600">See shuttle locations on an interactive map in real-time</p>
+    </div>
+    
+    <div class="feature-card bg-white p-6 rounded-2xl shadow-xl">
+      <div class="text-4xl mb-3">💰</div>
+      <h3 class="text-xl font-bold text-green-700 mb-2">Cashless System</h3>
+      <p class="text-gray-600">Tap and go with RFID-based payment technology</p>
+    </div>
+    
+    <div class="feature-card bg-white p-6 rounded-2xl shadow-xl">
+      <div class="text-4xl mb-3">📊</div>
+      <h3 class="text-xl font-bold text-green-700 mb-2">Ride History</h3>
+      <p class="text-gray-600">Track your rides and spending with detailed logs</p>
+    </div>
+    
+    <div class="feature-card bg-white p-6 rounded-2xl shadow-xl">
+      <div class="text-4xl mb-3">📱</div>
+      <h3 class="text-xl font-bold text-green-700 mb-2">Mobile Ready</h3>
+      <p class="text-gray-600">Fully responsive design for all devices</p>
+    </div>
+    
+    <div class="feature-card bg-white p-6 rounded-2xl shadow-xl">
+      <div class="text-4xl mb-3">🔒</div>
+      <h3 class="text-xl font-bold text-green-700 mb-2">Secure</h3>
+      <p class="text-gray-600">Your data is protected with Firebase authentication</p>
+    </div>
+    
+    <div class="feature-card bg-white p-6 rounded-2xl shadow-xl">
+      <div class="text-4xl mb-3">⚡</div>
+      <h3 class="text-xl font-bold text-green-700 mb-2">Fast & Easy</h3>
+      <p class="text-gray-600">Simple interface for quick and easy access</p>
+    </div>
+  </div>
 
-  <h2 class="mt-4 font-bold text-green-700">Meet the Team</h2>
-  <ul class="list-disc ml-6">
-    <li><b>David Aram Castillo</b> — Product Owner</li>
-    <li><b>Alvin John Cutamora</b> — Scrum Master</li>
-    <li><b>Julius Solomon Jr.</b> — Developer</li>
-  </ul>
+  <!-- Team Section -->
+  <div class="bg-white text-gray-900 p-6 sm:p-8 rounded-2xl shadow-xl">
+    <h2 class="text-2xl sm:text-3xl font-bold text-green-700 mb-6 flex items-center gap-2">
+      👥 Meet the Team
+    </h2>
+    
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+      <div class="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-xl border-l-4 border-green-500">
+        <div class="text-3xl mb-2">👨‍💼</div>
+        <h3 class="text-xl font-bold text-gray-800">David Aram Castillo</h3>
+        <p class="text-green-700 font-medium">Product Owner</p>
+      </div>
+      
+      <div class="bg-gradient-to-br from-blue-50 to-cyan-50 p-6 rounded-xl border-l-4 border-blue-500">
+        <div class="text-3xl mb-2">👨‍💻</div>
+        <h3 class="text-xl font-bold text-gray-800">Alvin John Cutamora</h3>
+        <p class="text-blue-700 font-medium">Scrum Master & Developer</p>
+      </div>
+    </div>
+  </div>
+
 </main>
 
 </body>
