@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>CampusTap Dashboard</title>
+  <title>🚍CampusTap</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <script src="https://cdn.tailwindcss.com"></script>
@@ -29,9 +29,12 @@
 
 <body class="bg-green-700 min-h-screen text-white">
 
-<nav class="bg-white p-4 text-green-700 flex justify-between">
+<nav class="bg-white p-4 text-green-700 flex justify-between items-center">
   <h1 class="font-bold text-lg">CampusTap Dashboard</h1>
-  <button id="logoutBtn" class="px-3 py-1 bg-green-700 text-white rounded">Logout</button>
+  <div class="flex gap-3">
+    <a href="about.html" class="px-3 py-1 bg-gray-200 text-green-700 rounded hover:bg-gray-300">About</a>
+    <button id="logoutBtn" class="px-3 py-1 bg-green-700 text-white rounded hover:bg-green-800">Logout</button>
+  </div>
 </nav>
 
 <main class="max-w-4xl mx-auto mt-6">
@@ -42,18 +45,20 @@
   </div>
 
   <div class="bg-white text-gray-900 p-6 rounded shadow mt-6">
-    <h2 class="text-xl font-bold text-green-700">Your RFID</h2>
-    <p id="rfidBox" class="text-lg font-bold mt-2"></p>
+    <h2 class="text-xl font-bold text-green-700 mb-4">Shuttle Location</h2>
+    <div id="map"></div>
+  </div>
+
+  <div class="bg-white text-gray-900 p-6 rounded shadow mt-6">
+    <h2 class="text-xl font-bold text-green-700 mb-4">Ride History</h2>
+    <div id="rideHistory" class="space-y-2">
+      <p class="text-gray-500">Loading ride history...</p>
+    </div>
   </div>
 
   <div class="bg-white text-gray-900 p-6 rounded shadow mt-6">
     <h2 class="text-xl font-bold text-green-700">Total Rides</h2>
     <p id="rideCount" class="text-3xl font-bold mt-2">0</p>
-  </div>
-
-  <div class="bg-white text-gray-900 p-6 rounded shadow mt-6">
-    <h2 class="text-xl font-bold text-green-700 mb-4">Shuttle Location</h2>
-    <div id="map"></div>
   </div>
 
 </main>
@@ -117,12 +122,41 @@ auth.onAuthStateChanged(async user => {
   userRef.onSnapshot(snap => {
     const d = snap.data();
     balanceBox.textContent = "₱" + (d.balance ?? 0);
-    rfidBox.textContent = d.rfid ?? "No RFID linked";
   });
 
   db.collection("rides")
     .where("userId", "==", user.uid)
-    .onSnapshot(snap => rideCount.textContent = snap.size);
+    .orderBy("timestamp", "desc")
+    .limit(10)
+    .onSnapshot(snap => {
+      rideCount.textContent = snap.size;
+      
+      // Display ride history
+      const historyBox = document.getElementById('rideHistory');
+      if (snap.empty) {
+        historyBox.innerHTML = '<p class="text-gray-500">No rides yet</p>';
+        return;
+      }
+      
+      historyBox.innerHTML = snap.docs.map(doc => {
+        const ride = doc.data();
+        const date = ride.timestamp?.toDate() || new Date();
+        const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const formattedTime = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        
+        return `
+          <div class="p-3 bg-gray-50 rounded border border-gray-200">
+            <div class="flex justify-between items-center">
+              <div>
+                <p class="font-semibold text-green-700">Tap ${ride.type || 'In'}</p>
+                <p class="text-sm text-gray-600">${formattedDate} at ${formattedTime}</p>
+              </div>
+              <p class="text-lg font-bold text-gray-700">-₱${ride.fare || '0'}</p>
+            </div>
+          </div>
+        `;
+      }).join('');
+    });
 });
 
 logoutBtn.onclick = () => auth.signOut().then(() => location = "index.html");
