@@ -94,6 +94,48 @@
         padding: 0.75rem 1rem;
       }
     }
+    
+    /* Modal styles */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      animation: fadeIn 0.2s ease-in;
+    }
+    
+    .modal-overlay.active {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    .modal-content {
+      background: white;
+      border-radius: 1.5rem;
+      max-width: 500px;
+      width: 90%;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      animation: slideUp 0.3s ease-out;
+    }
+    
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(50px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
   </style>
 </head>
 
@@ -104,8 +146,52 @@
     <h1 class="font-bold text-lg sm:text-2xl tracking-tight flex items-center">🚍 CampusTap</h1>
     <a href="about.html" class="modern-btn px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-gray-100 to-gray-200 text-green-700 rounded-lg hover:from-gray-200 hover:to-gray-300 font-medium text-sm sm:text-base flex items-center">ℹ️ About</a>
   </div>
-  <button id="logoutBtn" class="modern-btn px-4 py-1.5 sm:px-5 sm:py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 font-medium shadow-md text-sm sm:text-base flex items-center">🚪 Logout</button>
+  <div class="flex items-center gap-2">
+    <button id="accountBtn" class="modern-btn px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 rounded-lg hover:from-blue-200 hover:to-blue-300 font-medium text-sm sm:text-base flex items-center">👤 Account</button>
+    <button id="logoutBtn" class="modern-btn px-4 py-1.5 sm:px-5 sm:py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 font-medium shadow-md text-sm sm:text-base flex items-center">🚪 Logout</button>
+  </div>
 </nav>
+
+<!-- Account Modal -->
+<div id="accountModal" class="modal-overlay">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="p-6 sm:p-8">
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl sm:text-3xl font-bold text-green-700">👤 Account Info</h2>
+        <button id="closeModal" class="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+      </div>
+      
+      <!-- User Info -->
+      <div class="space-y-4">
+        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border-l-4 border-blue-500">
+          <p class="text-sm text-gray-600 mb-1">👤 Name</p>
+          <p id="modalName" class="text-xl font-bold text-gray-800">Loading...</p>
+        </div>
+        
+        <div class="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border-l-4 border-green-500">
+          <p class="text-sm text-gray-600 mb-1">📧 Email</p>
+          <p id="modalEmail" class="text-lg font-semibold text-gray-800">Loading...</p>
+        </div>
+        
+        <div class="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border-l-4 border-green-500">
+          <p class="text-sm text-gray-600 mb-1">💰 Current Balance</p>
+          <p id="modalBalance" class="text-3xl font-bold text-green-700 mt-2">₱0</p>
+        </div>
+        
+        <div class="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border-l-4 border-purple-500">
+          <p class="text-sm text-gray-600 mb-1">🔢 Total Rides</p>
+          <p id="modalTotalRides" class="text-2xl font-bold text-purple-700 mt-2">0</p>
+        </div>
+      </div>
+      
+      <!-- Close Button -->
+      <button id="closeModalBtn" class="w-full mt-6 modern-btn px-5 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 font-medium shadow-md">
+        Close
+      </button>
+    </div>
+  </div>
+</div>
 
 <main class="max-w-7xl mx-auto mt-4 sm:mt-8 px-3 sm:px-4 pb-8 sm:pb-12">
 
@@ -240,6 +326,57 @@ auth.onAuthStateChanged(async user => {
         `;
       }).join('');
     });
+});
+
+// Account Modal functionality
+const accountModal = document.getElementById('accountModal');
+const accountBtn = document.getElementById('accountBtn');
+const closeModal = document.getElementById('closeModal');
+const closeModalBtn = document.getElementById('closeModalBtn');
+
+// Open modal
+accountBtn.onclick = () => {
+  accountModal.classList.add('active');
+};
+
+// Close modal when clicking X or Close button
+closeModal.onclick = () => {
+  accountModal.classList.remove('active');
+};
+
+closeModalBtn.onclick = () => {
+  accountModal.classList.remove('active');
+};
+
+// Close modal when clicking outside
+accountModal.onclick = () => {
+  accountModal.classList.remove('active');
+};
+
+// Update modal with user data
+auth.onAuthStateChanged(user => {
+  if (user) {
+    const userRef = db.doc(`users/${user.uid}`);
+    
+    // Set email
+    document.getElementById('modalEmail').textContent = user.email || 'No email';
+    
+    // Listen to user data changes
+    userRef.onSnapshot(snap => {
+      const data = snap.data();
+      if (data) {
+        document.getElementById('modalName').textContent = data.name || user.displayName || 'No name set';
+        document.getElementById('modalBalance').textContent = '₱' + (data.balance ?? 0);
+      }
+    });
+    
+    // Get total rides for modal
+    db.collection("rides")
+      .where("userId", "==", user.uid)
+      .onSnapshot(snap => {
+        document.getElementById('modalTotalRides').textContent = snap.size;
+      });
+  }
 });
 
 logoutBtn.onclick = () => auth.signOut().then(() => location = "index.html");
