@@ -20,9 +20,25 @@
   
   <style>
     #map {
-      height: 400px;
+      height: 600px;
       width: 100%;
       border-radius: 0.375rem;
+    }
+    
+    /* Page transition animation */
+    body {
+      animation: fadeIn 0.5s ease-in;
+    }
+    
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
   </style>
 </head>
@@ -30,10 +46,10 @@
 <body class="bg-green-700 min-h-screen text-white">
 
 <nav class="bg-white p-4 text-green-700 flex justify-between items-center">
-  <h1 class="font-bold text-lg">CampusTap Dashboard</h1>
+  <h1 class="font-bold text-lg">🚍 CampusTap</h1>
   <div class="flex gap-3">
-    <a href="about.html" class="px-3 py-1 bg-gray-200 text-green-700 rounded hover:bg-gray-300">About</a>
-    <button id="logoutBtn" class="px-3 py-1 bg-green-700 text-white rounded hover:bg-green-800">Logout</button>
+    <a href="about.html" class="px-3 py-1 bg-gray-200 text-green-700 rounded hover:bg-gray-300">ℹ️ About</a>
+    <button id="logoutBtn" class="px-3 py-1 bg-green-700 text-white rounded hover:bg-green-800">🚪 Logout</button>
   </div>
 </nav>
 
@@ -43,7 +59,7 @@
     
     <!-- Left Column - Map -->
     <div class="bg-white text-gray-900 p-6 rounded shadow">
-      <h2 class="text-xl font-bold text-green-700 mb-4">Shuttle Location</h2>
+      <h2 class="text-xl font-bold text-green-700 mb-4">📍 Shuttle Location</h2>
       <div id="map"></div>
     </div>
 
@@ -52,16 +68,16 @@
       
       <!-- Balance -->
       <div class="bg-white text-gray-900 p-6 rounded shadow">
-        <h2 class="text-xl font-bold text-green-700">Your Balance</h2>
+        <h2 class="text-xl font-bold text-green-700">💰 Your Balance</h2>
         <p id="balanceBox" class="text-3xl font-bold mt-2">₱0</p>
       </div>
 
       <!-- Ride History & Total Rides Combined -->
       <div class="bg-white text-gray-900 p-6 rounded shadow">
         <div class="flex justify-between items-center mb-4">
-          <h2 class="text-xl font-bold text-green-700">Ride History</h2>
+          <h2 class="text-xl font-bold text-green-700">📜 Ride History</h2>
           <div class="text-right">
-            <p class="text-sm text-gray-600">Total Rides</p>
+            <p class="text-sm text-gray-600">🔢 Total Rides</p>
             <p id="rideCount" class="text-2xl font-bold text-green-700">0</p>
           </div>
         </div>
