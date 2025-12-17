@@ -413,7 +413,7 @@ auth.onAuthStateChanged(user => {
     userRef.onSnapshot(snap => {
       const data = snap.data();
       if (data) {
-        document.getElementById('modalName').textContent = data.name || user.displayName || 'No name set';
+        document.getElementById('modalName').textContent = data.fullName || user.displayName || 'No name set';
         document.getElementById('modalBalance').textContent = '₱' + (data.balance ?? 0);
       }
     });
