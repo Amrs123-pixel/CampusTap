@@ -37,28 +37,41 @@
   </div>
 </nav>
 
-<main class="max-w-4xl mx-auto mt-6">
+<main class="max-w-7xl mx-auto mt-6 px-4">
 
-  <div class="bg-white text-gray-900 p-6 rounded shadow">
-    <h2 class="text-xl font-bold text-green-700">Your Balance</h2>
-    <p id="balanceBox" class="text-3xl font-bold mt-2">₱0</p>
-  </div>
-
-  <div class="bg-white text-gray-900 p-6 rounded shadow mt-6">
-    <h2 class="text-xl font-bold text-green-700 mb-4">Shuttle Location</h2>
-    <div id="map"></div>
-  </div>
-
-  <div class="bg-white text-gray-900 p-6 rounded shadow mt-6">
-    <h2 class="text-xl font-bold text-green-700 mb-4">Ride History</h2>
-    <div id="rideHistory" class="space-y-2">
-      <p class="text-gray-500">Loading ride history...</p>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    
+    <!-- Left Column - Map -->
+    <div class="bg-white text-gray-900 p-6 rounded shadow">
+      <h2 class="text-xl font-bold text-green-700 mb-4">Shuttle Location</h2>
+      <div id="map"></div>
     </div>
-  </div>
 
-  <div class="bg-white text-gray-900 p-6 rounded shadow mt-6">
-    <h2 class="text-xl font-bold text-green-700">Total Rides</h2>
-    <p id="rideCount" class="text-3xl font-bold mt-2">0</p>
+    <!-- Right Column - Balance, Ride History & Total Rides -->
+    <div class="space-y-6">
+      
+      <!-- Balance -->
+      <div class="bg-white text-gray-900 p-6 rounded shadow">
+        <h2 class="text-xl font-bold text-green-700">Your Balance</h2>
+        <p id="balanceBox" class="text-3xl font-bold mt-2">₱0</p>
+      </div>
+
+      <!-- Ride History & Total Rides Combined -->
+      <div class="bg-white text-gray-900 p-6 rounded shadow">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold text-green-700">Ride History</h2>
+          <div class="text-right">
+            <p class="text-sm text-gray-600">Total Rides</p>
+            <p id="rideCount" class="text-2xl font-bold text-green-700">0</p>
+          </div>
+        </div>
+        <div id="rideHistory" class="space-y-2 max-h-96 overflow-y-auto">
+          <p class="text-gray-500">Loading ride history...</p>
+        </div>
+      </div>
+
+    </div>
+
   </div>
 
 </main>
@@ -69,8 +82,8 @@ let shuttleMarker;
 
 // Initialize Google Map
 function initMap() {
-  // Default location (University of San Carlos - Main Campus)
-  const defaultLocation = { lat: 10.2976, lng: 123.9019 };
+  // Default location (University of San Carlos - Talamban Campus)
+  const defaultLocation = { lat: 10.3538, lng: 123.9124 };
   
   map = new google.maps.Map(document.getElementById('map'), {
     center: defaultLocation,
