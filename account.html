@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Your Account</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Firebase COMPAT MODE -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+  <script src="firebase-config.js"></script>
+</head>
+
+<body class="bg-green-700 min-h-screen text-white">
+
+<nav class="bg-white p-4 text-green-700">
+  <a href="campustap.html" class="font-bold">← Back</a>
+</nav>
+
+<main class="max-w-4xl mx-auto p-6 bg-white text-gray-900 mt-6 rounded shadow">
+
+  <h1 class="text-2xl font-bold text-green-700">Your Account</h1>
+
+  <div class="mt-4">
+    <p class="text-lg"><b>Balance:</b> <span id="balanceBox">₱0</span></p>
+    <p class="text-lg"><b>RFID:</b> <span id="rfidBox">Loading...</span></p>
+  </div>
+
+  <h2 class="text-xl mt-6 font-bold text-green-700">Ride History</h2>
+
+  <table class="w-full mt-2 border">
+    <thead class="bg-green-700 text-white">
+      <tr>
+        <th class="p-2 border">Timestamp</th>
+        <th class="p-2 border">Route</th>
+        <th class="p-2 border">Fare</th>
+      </tr>
+    </thead>
+    <tbody id="rideTable"></tbody>
+  </table>
+
+</main>
+
+<script>
+auth.onAuthStateChanged(user => {
+  if (!user) return location = "index.html";
+
+  db.doc(`users/${user.uid}`).onSnapshot(doc => {
+    const d = doc.data();
+    balanceBox.textContent = "₱" + (d.balance ?? 0);
+    rfidBox.textContent = d.rfid ?? "No RFID linked";
+  });
+
+  db.collection("rides")
+    .where("userId", "==", user.uid)
+    .orderBy("timestamp", "desc")
+    .onSnapshot(snapshot => {
+      rideTable.innerHTML = "";
+      snapshot.forEach(doc => {
+        const d = doc.data();
+        rideTable.innerHTML += `
+          <tr>
+            <td class="p-2 border">${new Date(d.timestamp).toLocaleString()}</td>
+            <td class="p-2 border">${d.route}</td>
+            <td class="p-2 border">₱${d.fare}</td>
+          </tr>
+        `;
+      });
+    });
+});
+</script>
+
+</body>
+</html>

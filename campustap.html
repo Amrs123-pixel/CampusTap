@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CampusTap Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Firebase COMPAT MODE -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+  <script src="firebase-config.js"></script>
+  
+  <!-- Google Maps API -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA6OmfsgRx-D6dN2Mto5Btczi8A64ReQJg&callback=initMap" async defer></script>
+  
+  <style>
+    #map {
+      height: 400px;
+      width: 100%;
+      border-radius: 0.375rem;
+    }
+  </style>
+</head>
+
+<body class="bg-green-700 min-h-screen text-white">
+
+<nav class="bg-white p-4 text-green-700 flex justify-between">
+  <h1 class="font-bold text-lg">CampusTap Dashboard</h1>
+  <button id="logoutBtn" class="px-3 py-1 bg-green-700 text-white rounded">Logout</button>
+</nav>
+
+<main class="max-w-4xl mx-auto mt-6">
+
+  <div class="bg-white text-gray-900 p-6 rounded shadow">
+    <h2 class="text-xl font-bold text-green-700">Your Balance</h2>
+    <p id="balanceBox" class="text-3xl font-bold mt-2">₱0</p>
+  </div>
+
+  <div class="bg-white text-gray-900 p-6 rounded shadow mt-6">
+    <h2 class="text-xl font-bold text-green-700">Your RFID</h2>
+    <p id="rfidBox" class="text-lg font-bold mt-2"></p>
+  </div>
+
+  <div class="bg-white text-gray-900 p-6 rounded shadow mt-6">
+    <h2 class="text-xl font-bold text-green-700">Total Rides</h2>
+    <p id="rideCount" class="text-3xl font-bold mt-2">0</p>
+  </div>
+
+  <div class="bg-white text-gray-900 p-6 rounded shadow mt-6">
+    <h2 class="text-xl font-bold text-green-700 mb-4">Shuttle Location</h2>
+    <div id="map"></div>
+  </div>
+
+</main>
+
+<script>
+let map;
+let shuttleMarker;
+
+// Initialize Google Map
+function initMap() {
+  // Default location (University of San Carlos - Main Campus)
+  const defaultLocation = { lat: 10.2976, lng: 123.9019 };
+  
+  map = new google.maps.Map(document.getElementById('map'), {
+    center: defaultLocation,
+    zoom: 15,
+    mapTypeControl: true,
+    streetViewControl: false,
+    fullscreenControl: true
+  });
+  
+  // Create a marker for the shuttle
+  shuttleMarker = new google.maps.Marker({
+    position: defaultLocation,
+    map: map,
+    title: 'Campus Shuttle',
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 10,
+      fillColor: '#15803d',
+      fillOpacity: 1,
+      strokeColor: '#ffffff',
+      strokeWeight: 2
+    }
+  });
+  
+  // Info window for shuttle details
+  const infoWindow = new google.maps.InfoWindow({
+    content: '<div style="padding: 5px;"><strong>Campus Shuttle</strong><br/>Click marker for more info</div>'
+  });
+  
+  shuttleMarker.addListener('click', () => {
+    infoWindow.open(map, shuttleMarker);
+  });
+}
+
+// Update shuttle location on map
+function updateShuttleLocation(lat, lng) {
+  if (shuttleMarker && map) {
+    const newPosition = { lat: lat, lng: lng };
+    shuttleMarker.setPosition(newPosition);
+    map.panTo(newPosition);
+  }
+}
+
+auth.onAuthStateChanged(async user => {
+  if (!user) return location = "index.html";
+
+  const userRef = db.doc(`users/${user.uid}`);
+
+  userRef.onSnapshot(snap => {
+    const d = snap.data();
+    balanceBox.textContent = "₱" + (d.balance ?? 0);
+    rfidBox.textContent = d.rfid ?? "No RFID linked";
+  });
+
+  db.collection("rides")
+    .where("userId", "==", user.uid)
+    .onSnapshot(snap => rideCount.textContent = snap.size);
+});
+
+logoutBtn.onclick = () => auth.signOut().then(() => location = "index.html");
+</script>
+
+</body>
+</html>

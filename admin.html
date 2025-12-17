@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CampusTap Admin Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Firebase COMPAT MODE -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+  <script src="firebase-config.js"></script>
+</head>
+
+<body class="bg-green-700 min-h-screen text-white">
+
+<nav class="bg-white text-green-700 shadow p-4 flex justify-between">
+  <h1 class="font-bold text-xl">CampusTap Admin Dashboard</h1>
+  <button id="logoutBtn" class="bg-green-700 text-white px-4 py-1 rounded">Logout</button>
+</nav>
+
+<main class="max-w-5xl mx-auto p-6 bg-white text-gray-900 rounded shadow mt-6">
+
+  <h2 class="text-xl font-bold text-green-700">Manage User Balances</h2>
+
+  <div class="mt-4 bg-gray-100 p-4 rounded shadow">
+    <label>Select User</label>
+    <select id="userSelect" class="border rounded p-2 w-full mt-1"></select>
+
+    <label class="block mt-4">Top-Up Amount</label>
+    <input id="topupAmount" type="number" min="1" class="border rounded p-2 w-full">
+
+    <button id="topupBtn" class="bg-green-700 text-white px-4 py-2 mt-4 rounded w-full">Top Up</button>
+  </div>
+
+  <h2 class="text-xl font-bold text-green-700 mt-8">Recent Top-Ups</h2>
+
+  <table class="w-full mt-2 border">
+    <thead class="bg-green-700 text-white">
+      <tr>
+        <th class="p-2 border">User</th>
+        <th class="p-2 border">Amount</th>
+        <th class="p-2 border">Admin</th>
+        <th class="p-2 border">Time</th>
+      </tr>
+    </thead>
+    <tbody id="topupTable"></tbody>
+  </table>
+
+</main>
+
+<script>
+// ========== AUTH LISTENER ==========
+auth.onAuthStateChanged(user => {
+  if (!user) return location = "index.html";
+  currentAdmin = user;
+  loadUsers();
+  loadRecentTopups();
+});
+
+// ========== LOAD USERS ==========
+async function loadUsers() {
+  const snapshot = await db.collection("users").get();
+  userSelect.innerHTML = "";
+  snapshot.forEach(doc => {
+    const u = doc.data();
+    const opt = document.createElement("option");
+    opt.value = doc.id;
+    opt.textContent = `${u.fullName} — ₱${u.balance}`;
+    userSelect.appendChild(opt);
+  });
+}
+
+// ========== LOAD LAST 10 TOP-UPS ==========
+async function loadRecentTopups() {
+  const q = db.collection("topups").orderBy("timestamp", "desc").limit(10);
+  const snap = await q.get();
+  topupTable.innerHTML = "";
+
+  snap.forEach(doc => {
+    const d = doc.data();
+    topupTable.innerHTML += `
+      <tr>
+        <td class="p-2 border">${d.userEmail}</td>
+        <td class="p-2 border">₱${d.amount}</td>
+        <td class="p-2 border">${d.adminEmail}</td>
+        <td class="p-2 border">${new Date(d.timestamp).toLocaleString()}</td>
+      </tr>`;
+  });
+}
+
+// ========== TOPUP BUTTON (FULL SYNC) ==========
+topupBtn.onclick = async () => {
+  const uid = userSelect.value;
+  const amt = parseInt(topupAmount.value);
+
+  if (!uid || amt <= 0) return alert("Invalid input.");
+
+  const userRef = db.doc(`users/${uid}`);
+  const snap = await userRef.get();
+  const u = snap.data();
+
+  const newBalance = (u.balance ?? 0) + amt;
+
+  // 1) Update USERS
+  await userRef.update({ balance: newBalance });
+
+  // 2) Update RFID USERS
+  if (u.rfid) {
+    await db.doc(`rfidUsers/${u.rfid}`).update({ balance: newBalance });
+  }
+
+  // 3) Log top-up
+  await db.collection("topups").add({
+    userId: uid,
+    userEmail: u.email,
+    amount: amt,
+    adminEmail: currentAdmin.email,
+    timestamp: Date.now()
+  });
+
+  alert("Top-up complete!");
+  topupAmount.value = "";
+  loadUsers();
+  loadRecentTopups();
+};
+
+logoutBtn.onclick = () => auth.signOut().then(() => location = "index.html");
+</script>
+
+</body>
+</html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CampusTap Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Firebase COMPAT MODE -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+  <script src="firebase-config.js"></script>
+</head>
+
+<body class="bg-green-700 min-h-screen flex items-center justify-center">
+
+  <div class="bg-white p-8 rounded shadow max-w-sm w-full">
+    <h1 class="text-xl font-bold text-green-700">CampusTap Login</h1>
+
+    <input id="email" type="email" placeholder="Email"
+      class="border p-2 w-full mt-4 rounded" />
+    <input id="password" type="password" placeholder="Password"
+      class="border p-2 w-full mt-2 rounded" />
+
+    <button id="loginBtn"
+      class="bg-green-700 text-white w-full mt-4 p-2 rounded">Login</button>
+
+    <p id="errorBox" class="text-red-600 mt-3 hidden"></p>
+  </div>
+
+<script>
+auth.onAuthStateChanged(user => {
+  if (user) window.location = "campustap.html";
+});
+
+loginBtn.onclick = () => {
+  auth.signInWithEmailAndPassword(email.value, password.value)
+    .catch(e => {
+      errorBox.textContent = e.message;
+      errorBox.classList.remove("hidden");
+    });
+};
+</script>
+
+</body>
+</html>
