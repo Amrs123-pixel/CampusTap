@@ -322,6 +322,30 @@ auth.onAuthStateChanged(async user => {
 
   const userRef = db.doc(`users/${user.uid}`);
   let isUpdatingFromRfid = false;
+  let isUpdatingToRfid = false;
+  let hasInitialSync = false;
+
+  // Get user data first to check rfid
+  const userSnap = await userRef.get();
+  const userData = userSnap.data();
+  
+  if (!userData || !userData.rfid) {
+    console.warn('No RFID found for user');
+    return;
+  }
+
+  const rfidRef = db.doc(`rfidUsers/${userData.rfid}`);
+
+  // Initial sync: rfidUsers balance → users balance (rfidUsers is source of truth)
+  const rfidSnap = await rfidRef.get();
+  const rfidData = rfidSnap.data();
+  if (rfidData && typeof rfidData.balance !== 'undefined') {
+    if (userData.balance !== rfidData.balance) {
+      await userRef.update({ balance: rfidData.balance });
+      console.log('Initial sync: Updated users balance to match rfidUsers:', rfidData.balance);
+    }
+  }
+  hasInitialSync = true;
 
   // Listen to users/{userId}/balance changes and sync to rfidUsers/{rfid}/balance
   userRef.onSnapshot(snap => {
@@ -329,10 +353,17 @@ auth.onAuthStateChanged(async user => {
     const balanceValue = (d && typeof d.balance !== 'undefined') ? d.balance : 0;
     balanceBox.textContent = "₱" + balanceValue;
 
-    // Sync balance to Firestore rfidUsers/{rfid}/balance
-    if (!isUpdatingFromRfid && d && d.rfid) {
+    // Sync balance to Firestore rfidUsers/{rfid}/balance (skip if we're updating from rfid)
+    if (hasInitialSync && !isUpdatingFromRfid && d && d.rfid) {
+      isUpdatingToRfid = true;
       db.doc(`rfidUsers/${d.rfid}`).update({ balance: balanceValue })
-        .catch(err => console.error('Failed to sync balance to rfidUsers:', err));
+        .then(() => {
+          setTimeout(() => { isUpdatingToRfid = false; }, 300);
+        })
+        .catch(err => {
+          console.error('Failed to sync balance to rfidUsers:', err);
+          isUpdatingToRfid = false;
+        });
     }
 
     // Also sync to Realtime Database at rfidUsers/{Tag}/Balance
@@ -346,30 +377,27 @@ auth.onAuthStateChanged(async user => {
   });
 
   // Listen to rfidUsers/{rfid}/balance changes and sync to users/{userId}/balance
-  userRef.get().then(snap => {
-    const userData = snap.data();
-    if (userData && userData.rfid) {
-      const rfidRef = db.doc(`rfidUsers/${userData.rfid}`);
-      rfidRef.onSnapshot(rfidSnap => {
-        const rfidData = rfidSnap.data();
-        if (rfidData && typeof rfidData.balance !== 'undefined') {
-          const rfidBalance = rfidData.balance;
-          
-          // Update users collection if balances differ
-          userRef.get().then(userSnap => {
-            const currentUserData = userSnap.data();
-            if (currentUserData && currentUserData.balance !== rfidBalance) {
-              isUpdatingFromRfid = true;
-              userRef.update({ balance: rfidBalance })
-                .then(() => {
-                  setTimeout(() => { isUpdatingFromRfid = false; }, 500);
-                })
-                .catch(err => {
-                  console.error('Failed to sync balance from rfidUsers:', err);
-                  isUpdatingFromRfid = false;
-                });
-            }
-          });
+  rfidRef.onSnapshot(rfidSnap => {
+    if (!hasInitialSync || isUpdatingToRfid) return;
+    
+    const rfidData = rfidSnap.data();
+    if (rfidData && typeof rfidData.balance !== 'undefined') {
+      const rfidBalance = rfidData.balance;
+      
+      // Update users collection if balances differ
+      userRef.get().then(userSnap => {
+        const currentUserData = userSnap.data();
+        if (currentUserData && currentUserData.balance !== rfidBalance) {
+          isUpdatingFromRfid = true;
+          userRef.update({ balance: rfidBalance })
+            .then(() => {
+              console.log('Synced balance from rfidUsers to users:', rfidBalance);
+              setTimeout(() => { isUpdatingFromRfid = false; }, 300);
+            })
+            .catch(err => {
+              console.error('Failed to sync balance from rfidUsers:', err);
+              isUpdatingFromRfid = false;
+            });
         }
       });
     }
