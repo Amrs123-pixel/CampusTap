@@ -327,10 +327,10 @@ auth.onAuthStateChanged(async user => {
     const balanceValue = (d && typeof d.balance !== 'undefined') ? d.balance : 0;
     balanceBox.textContent = "₱" + balanceValue;
 
-    // Sync balance to Realtime Database at rfidUsers/balance
+    // Sync balance to Realtime Database at rfidUsers/{Tag}/Balance
     try {
-      if (typeof rtdb !== 'undefined' && rtdb && user) {
-        rtdb.ref('rfidUsers/balance').set(balanceValue);
+      if (typeof rtdb !== 'undefined' && rtdb && user && d && d.rfid) {
+        rtdb.ref(`rfidUsers/${d.rfid}/Balance`).set(balanceValue);
       }
     } catch (e) {
       console.error('Failed to sync balance to RTDB:', e);
