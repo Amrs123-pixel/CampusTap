@@ -321,19 +321,57 @@ auth.onAuthStateChanged(async user => {
   if (!user) return location = "index.html";
 
   const userRef = db.doc(`users/${user.uid}`);
+  let isUpdatingFromRfid = false;
 
+  // Listen to users/{userId}/balance changes and sync to rfidUsers/{rfid}/balance
   userRef.onSnapshot(snap => {
     const d = snap.data();
     const balanceValue = (d && typeof d.balance !== 'undefined') ? d.balance : 0;
     balanceBox.textContent = "₱" + balanceValue;
 
-    // Sync balance to Realtime Database at rfidUsers/{Tag}/Balance
+    // Sync balance to Firestore rfidUsers/{rfid}/balance
+    if (!isUpdatingFromRfid && d && d.rfid) {
+      db.doc(`rfidUsers/${d.rfid}`).update({ balance: balanceValue })
+        .catch(err => console.error('Failed to sync balance to rfidUsers:', err));
+    }
+
+    // Also sync to Realtime Database at rfidUsers/{Tag}/Balance
     try {
       if (typeof rtdb !== 'undefined' && rtdb && user && d && d.rfid) {
         rtdb.ref(`rfidUsers/${d.rfid}/Balance`).set(balanceValue);
       }
     } catch (e) {
       console.error('Failed to sync balance to RTDB:', e);
+    }
+  });
+
+  // Listen to rfidUsers/{rfid}/balance changes and sync to users/{userId}/balance
+  userRef.get().then(snap => {
+    const userData = snap.data();
+    if (userData && userData.rfid) {
+      const rfidRef = db.doc(`rfidUsers/${userData.rfid}`);
+      rfidRef.onSnapshot(rfidSnap => {
+        const rfidData = rfidSnap.data();
+        if (rfidData && typeof rfidData.balance !== 'undefined') {
+          const rfidBalance = rfidData.balance;
+          
+          // Update users collection if balances differ
+          userRef.get().then(userSnap => {
+            const currentUserData = userSnap.data();
+            if (currentUserData && currentUserData.balance !== rfidBalance) {
+              isUpdatingFromRfid = true;
+              userRef.update({ balance: rfidBalance })
+                .then(() => {
+                  setTimeout(() => { isUpdatingFromRfid = false; }, 500);
+                })
+                .catch(err => {
+                  console.error('Failed to sync balance from rfidUsers:', err);
+                  isUpdatingFromRfid = false;
+                });
+            }
+          });
+        }
+      });
     }
   });
 
