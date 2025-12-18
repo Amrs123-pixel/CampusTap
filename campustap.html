@@ -324,7 +324,17 @@ auth.onAuthStateChanged(async user => {
 
   userRef.onSnapshot(snap => {
     const d = snap.data();
-    balanceBox.textContent = "₱" + (d.balance ?? 0);
+    const balanceValue = (d && typeof d.balance !== 'undefined') ? d.balance : 0;
+    balanceBox.textContent = "₱" + balanceValue;
+
+    // Sync balance to Realtime Database at rfidUsers/balance
+    try {
+      if (typeof rtdb !== 'undefined' && rtdb && user) {
+        rtdb.ref('rfidUsers/balance').set(balanceValue);
+      }
+    } catch (e) {
+      console.error('Failed to sync balance to RTDB:', e);
+    }
   });
 
   // Get total rides count (all rides)
