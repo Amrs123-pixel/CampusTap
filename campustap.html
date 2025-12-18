@@ -336,68 +336,67 @@ auth.onAuthStateChanged(async user => {
 
   const rfidRef = db.doc(`rfidUsers/${userData.rfid}`);
 
-  // Initial sync: rfidUsers balance → users balance (rfidUsers is source of truth)
-  const rfidSnap = await rfidRef.get();
-  const rfidData = rfidSnap.data();
-  if (rfidData && typeof rfidData.balance !== 'undefined') {
-    if (userData.balance !== rfidData.balance) {
-      await userRef.update({ balance: rfidData.balance });
-      console.log('Initial sync: Updated users balance to match rfidUsers:', rfidData.balance);
+  // Display balance directly from rfidUsers (source of truth)
+  rfidRef.onSnapshot(rfidSnap => {
+    const rfidData = rfidSnap.data();
+    if (rfidData && typeof rfidData.balance !== 'undefined') {
+      const rfidBalance = rfidData.balance;
+      balanceBox.textContent = "₱" + rfidBalance;
+      
+      // Sync to users collection if different
+      if (!isUpdatingToRfid) {
+        userRef.get().then(userSnap => {
+          const currentUserData = userSnap.data();
+          if (currentUserData && currentUserData.balance !== rfidBalance) {
+            isUpdatingFromRfid = true;
+            userRef.update({ balance: rfidBalance })
+              .then(() => {
+                console.log('Synced balance from rfidUsers to users:', rfidBalance);
+                setTimeout(() => { isUpdatingFromRfid = false; }, 300);
+              })
+              .catch(err => {
+                console.error('Failed to sync balance to users:', err);
+                isUpdatingFromRfid = false;
+              });
+          }
+        });
+      }
+
+      // Sync to Realtime Database at rfidUsers/{Tag}/Balance
+      try {
+        if (typeof rtdb !== 'undefined' && rtdb && user) {
+          rtdb.ref(`rfidUsers/${userData.rfid}/Balance`).set(rfidBalance);
+        }
+      } catch (e) {
+        console.error('Failed to sync balance to RTDB:', e);
+      }
     }
-  }
-  hasInitialSync = true;
+  });
 
   // Listen to users/{userId}/balance changes and sync to rfidUsers/{rfid}/balance
   userRef.onSnapshot(snap => {
     const d = snap.data();
-    const balanceValue = (d && typeof d.balance !== 'undefined') ? d.balance : 0;
-    balanceBox.textContent = "₱" + balanceValue;
+    if (!d || !d.rfid) return;
+    
+    const userBalance = (d && typeof d.balance !== 'undefined') ? d.balance : 0;
 
     // Sync balance to Firestore rfidUsers/{rfid}/balance (skip if we're updating from rfid)
-    if (hasInitialSync && !isUpdatingFromRfid && d && d.rfid) {
+    if (!isUpdatingFromRfid) {
       isUpdatingToRfid = true;
-      db.doc(`rfidUsers/${d.rfid}`).update({ balance: balanceValue })
-        .then(() => {
-          setTimeout(() => { isUpdatingToRfid = false; }, 300);
-        })
-        .catch(err => {
-          console.error('Failed to sync balance to rfidUsers:', err);
-          isUpdatingToRfid = false;
-        });
-    }
-
-    // Also sync to Realtime Database at rfidUsers/{Tag}/Balance
-    try {
-      if (typeof rtdb !== 'undefined' && rtdb && user && d && d.rfid) {
-        rtdb.ref(`rfidUsers/${d.rfid}/Balance`).set(balanceValue);
-      }
-    } catch (e) {
-      console.error('Failed to sync balance to RTDB:', e);
-    }
-  });
-
-  // Listen to rfidUsers/{rfid}/balance changes and sync to users/{userId}/balance
-  rfidRef.onSnapshot(rfidSnap => {
-    if (!hasInitialSync || isUpdatingToRfid) return;
-    
-    const rfidData = rfidSnap.data();
-    if (rfidData && typeof rfidData.balance !== 'undefined') {
-      const rfidBalance = rfidData.balance;
-      
-      // Update users collection if balances differ
-      userRef.get().then(userSnap => {
-        const currentUserData = userSnap.data();
-        if (currentUserData && currentUserData.balance !== rfidBalance) {
-          isUpdatingFromRfid = true;
-          userRef.update({ balance: rfidBalance })
+      db.doc(`rfidUsers/${d.rfid}`).get().then(rfidDoc => {
+        const currentRfidData = rfidDoc.data();
+        if (currentRfidData && currentRfidData.balance !== userBalance) {
+          db.doc(`rfidUsers/${d.rfid}`).update({ balance: userBalance })
             .then(() => {
-              console.log('Synced balance from rfidUsers to users:', rfidBalance);
-              setTimeout(() => { isUpdatingFromRfid = false; }, 300);
+              console.log('Synced balance from users to rfidUsers:', userBalance);
+              setTimeout(() => { isUpdatingToRfid = false; }, 300);
             })
             .catch(err => {
-              console.error('Failed to sync balance from rfidUsers:', err);
-              isUpdatingFromRfid = false;
+              console.error('Failed to sync balance to rfidUsers:', err);
+              isUpdatingToRfid = false;
             });
+        } else {
+          isUpdatingToRfid = false;
         }
       });
     }
