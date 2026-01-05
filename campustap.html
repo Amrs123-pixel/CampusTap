@@ -306,6 +306,19 @@ function initMap() {
   shuttleMarker.addListener('click', () => {
     infoWindow.open(map, shuttleMarker);
   });
+  
+  // Listen to GPS location updates from Firebase RTDB
+  if (typeof rtdb !== 'undefined' && rtdb) {
+    rtdb.ref('gps').on('value', (snapshot) => {
+      const gpsData = snapshot.val();
+      if (gpsData && gpsData.latitude && gpsData.longitude) {
+        const lat = parseFloat(gpsData.latitude);
+        const lng = parseFloat(gpsData.longitude);
+        updateShuttleLocation(lat, lng);
+        console.log('GPS location updated:', lat, lng);
+      }
+    });
+  }
 }
 
 // Update shuttle location on map
